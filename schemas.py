@@ -1,3 +1,4 @@
+# schemas.py
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
@@ -10,8 +11,11 @@ class InvoiceBase(BaseModel):
     kdv_rate: Optional[int] = None
     category: Optional[str] = None
 
+
 class InvoiceRead(InvoiceBase):
     id: int
     created_at: datetime
+
     class Config:
-        from_attributes = True  # Pydantic v2 için: SQLAlchemy objesinden okur
+        orm_mode = True          # Pydantic v1 için
+        from_attributes = True   # Pydantic v2 için (zararı yok)

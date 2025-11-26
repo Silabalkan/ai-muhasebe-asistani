@@ -1,11 +1,15 @@
+# main.py
 from fastapi import FastAPI, File, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from PIL import Image
 import pytesseract
 import io
 from typing import List
-from sqlalchemy import func
+
+# Tesseract yolu (Windows)
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 # Yerel modüller
 import models
@@ -14,10 +18,10 @@ from crud import create_invoice, list_invoices
 from schemas import InvoiceRead
 from nlp_utils import analyze_invoice_text
 
-# Uygulama başlat
+# FastAPI app
 app = FastAPI(title="AI Muhasebe Asistanı - OCR API")
 
-# CORS (Frontend için gerekli olabilir)
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -30,32 +34,44 @@ app.add_middleware(
 Base.metadata.create_all(bind=engine)
 
 
-# 🩺 Sağlık kontrolü
+# 1) Sağlık kontrolü
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
 
-# 🧾 Fatura Yükle + OCR + NLP Analiz + Veritabanına Kaydet
+# 2) Debug için sadece OCR çıktısı
+@app.post("/debug-ocr")
+async def debug_ocr(file: UploadFile = File(...)):
+    data = await file.read()
+    image = Image.open(io.BytesIO(data))
+
+    try:
+        text = pytesseract.image_to_string(image, lang="tur")
+    except Exception:
+        text = pytesseract.image_to_string(image)
+
+    return {"raw_text": text}
+
+
+# 3) OCR + NLP + Veritabanına kaydet
 @app.post("/invoices/upload-analyze", response_model=InvoiceRead)
-async def upload_analyze_save(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    """
-    Kullanıcıdan alınan fiş/fatura görselini OCR ile okuyup
-    NLP analizinden geçirerek veritabanına kaydeder.
-    """
+async def upload_analyze_save(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
     content = await file.read()
     image = Image.open(io.BytesIO(content))
 
-    # OCR (Türkçe desteği varsa 'tur' olarak kullan)
+    # OCR
     try:
-        text = pytesseract.image_to_string(image, lang="tur").strip()
+        text = pytesseract.image_to_string(image, lang="tur")
     except Exception:
-        text = pytesseract.image_to_string(image).strip()
+        text = pytesseract.image_to_string(image)
 
-    # NLP analizi (tutar, kategori, ödeme tipi vb.)
+    # NLP analizi
     result = analyze_invoice_text(text)
 
-    # Veritabanına kaydet
     inv = create_invoice(
         db,
         filename=file.filename,
@@ -69,38 +85,44 @@ async def upload_analyze_save(file: UploadFile = File(...), db: Session = Depend
     return inv
 
 
-# 📜 Kayıtlı faturaları listele
+# 4) Kayıtlı fişleri listele
 @app.get("/invoices", response_model=List[InvoiceRead])
 def get_invoices(db: Session = Depends(get_db), limit: int = 50):
-    """
-    Veritabanındaki son 50 faturayı getirir.
-    """
     return list_invoices(db, limit=limit)
 
 
-# 📊 Özet rapor (gelir/gider toplamı)
+# 5) Özet rapor
 @app.get("/reports/summary")
 def summary_report(db: Session = Depends(get_db)):
-    """
-    Gelir - Gider - Net kazanç ve kategori bazlı toplamları döner.
-    """
-    income = db.query(func.sum(models.Invoice.total_amount))\
-               .filter(models.Invoice.category == "Gelir").scalar() or 0.0
-    expense = db.query(func.sum(models.Invoice.total_amount))\
-                .filter(models.Invoice.category == "Gider").scalar() or 0.0
-    net = (income or 0.0) - (expense or 0.0)
+    income = (
+        db.query(func.sum(models.Invoice.total_amount))
+        .filter(models.Invoice.category == "Gelir")
+        .scalar()
+        or 0.0
+    )
+    expense = (
+        db.query(func.sum(models.Invoice.total_amount))
+        .filter(models.Invoice.category == "Gider")
+        .scalar()
+        or 0.0
+    )
 
-    by_cat = db.query(models.Invoice.category, func.sum(models.Invoice.total_amount))\
-               .group_by(models.Invoice.category).all()
-    by_cat = [{"category": c or "Bilinmiyor", "total": float(t or 0)} for c, t in by_cat]
+    net = income - expense
+
+    by_cat = (
+        db.query(models.Invoice.category, func.sum(models.Invoice.total_amount))
+        .group_by(models.Invoice.category)
+        .all()
+    )
+
+    by_cat = [
+        {"category": c or "Bilinmiyor", "total": float(t or 0)}
+        for c, t in by_cat
+    ]
 
     return {
-        "income": float(income or 0),
-        "expense": float(expense or 0),
+        "income": float(income),
+        "expense": float(expense),
         "net": float(net),
         "by_category": by_cat,
     }
-
-
-#  Uygulama çalıştırma (isteğe bağlı)
-# Terminalde: uvicorn main:app --reload

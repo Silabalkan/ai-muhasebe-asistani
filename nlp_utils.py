@@ -1,7 +1,6 @@
+# nlp_utils.py
 import re
-from datetime import datetime
 
-# Tarih formatları
 DATE_PATTERNS = [
     r"\d{2}\.\d{2}\.\d{4}",
     r"\d{4}-\d{2}-\d{2}",
@@ -9,56 +8,14 @@ DATE_PATTERNS = [
     r"\d{2}-\d{2}-\d{2,4}",
 ]
 
-# Para kalıpları
-STRICT_MONEY_PATTERN = r"\d+[.,]\d{2}"                 # Sadece para formatı (128,95 gibi)
-STAR_MONEY_PATTERN = r"\*\s*(\d+[.,]\d{2})"            # *128,95 formatı
-TOPLAM_LINE_PATTERN = r"(toplam|total|genel toplam|ara toplam|top)\D*(\d+[.,]\d{2})"
-TOP_KDV_PATTERN = r"topkdv\D*(\d+[.,]\d{2})"
-
-# KDV oranları
+CURRENCY_PATTERN = r"(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)"
 KDV_RATE_PATTERN = r"%\s*(\d{1,2})"
+TOP_KDV_PATTERN = r"TOPKDV.*?(\d{1,3}[.,]\d{2})"
 
-# Anahtar kelimeler
 INCOME_KEYWORDS = ["tahsilat", "ödeme alındı", "satış", "gelir", "fatura"]
 EXPENSE_KEYWORDS = ["gider", "alış", "malzeme", "kira", "ekmek", "market", "ürün"]
 
 
-#  SORUN ÇÖZEN YENİ TUTAR BULMA ALGORİTMASI 
-def extract_amount(clean_text):
-    lines = clean_text.split()
-
-    # 1️⃣ TOPLAM satırı
-    toplam_match = re.search(TOPLAM_LINE_PATTERN, clean_text)
-    if toplam_match:
-        val = toplam_match.group(2)
-        return float(val.replace(".", "").replace(",", "."))
-
-    # 2️⃣ Yıldızlı toplam (*128,95)
-    star_match = re.search(STAR_MONEY_PATTERN, clean_text)
-    if star_match:
-        val = star_match.group(1)
-        return float(val.replace(".", "").replace(",", "."))
-
-    # 3️⃣ Normal para formatı (128,95)
-    money_values = re.findall(STRICT_MONEY_PATTERN, clean_text)
-    if money_values:
-        values = [float(x.replace(".", "").replace(",", ".")) for x in money_values]
-        return max(values)
-
-    # 4️⃣ Güvenli fallback (ama tek başına tam sayıları PARA SAYMA!)
-    all_numbers = re.findall(r"\d+[.,]?\d*", clean_text)
-    filtered = []
-    for num in all_numbers:
-        if "." in num or "," in num:  # sadece ondalıklı olanlar
-            try:
-                filtered.append(float(num.replace(".", "").replace(",", ".")))
-            except:
-                pass
-
-    return max(filtered) if filtered else None
-
-
-#  Ana analiz fonksiyonu (GÜNCEL)
 def analyze_invoice_text(text: str) -> dict:
     result = {
         "tarih": None,
@@ -70,50 +27,58 @@ def analyze_invoice_text(text: str) -> dict:
         "kategori": None,
     }
 
-    # Normalize
-    clean_text = (
-        text.lower()
-        .replace("\n", " ")
-        .replace("\t", " ")
-        .replace("*", " *")  # yıldızlı tutarlar için önemli
-        .strip()
-    )
+    clean_text = text.lower().replace("\n", " ").replace("\t", " ").strip()
 
-    # TARİH
+    # Tarih
     for pattern in DATE_PATTERNS:
-        match = re.search(pattern, clean_text)
-        if match:
-            result["tarih"] = match.group()
+        m = re.search(pattern, clean_text)
+        if m:
+            result["tarih"] = m.group()
             break
 
-    #  TUTAR (yeni güçlü algoritma)
-    result["tutar"] = extract_amount(clean_text)
+    # Tutar (en büyük sayı)
+    amounts = re.findall(CURRENCY_PATTERN, clean_text)
+    if amounts:
+        numbers = []
+        for a in amounts:
+            try:
+                clean_a = a.replace(".", "").replace(",", ".")
+                numbers.append(float(clean_a))
+            except:
+                pass
+        if numbers:
+            result["tutar"] = max(numbers)
 
-    #  KDV Tutarı
+    # KDV tutarı (TOPKDV satırı)
     top_kdv_match = re.search(TOP_KDV_PATTERN, clean_text)
     if top_kdv_match:
-        result["kdv_tutari"] = float(top_kdv_match.group(1).replace(",", "."))
+        try:
+            result["kdv_tutari"] = float(
+                top_kdv_match.group(1).replace(",", ".")
+            )
+        except:
+            pass
 
-    #  KDV ORANI
-    kdv_rates = re.findall(KDV_RATE_PATTERN, clean_text)
-    if kdv_rates:
-        result["kdv_orani"] = max(kdv_rates)
+    # Ürün KDV oranları
+    kdv_rate_match = re.findall(KDV_RATE_PATTERN, clean_text)
+    if kdv_rate_match:
+        result["kdv_orani"] = max(kdv_rate_match)
 
-    #  ÖDEME TİPİ
+    # Ödeme tipi
     if "nakit" in clean_text:
         result["odeme_tipi"] = "Nakit"
-    elif "kredi" in clean_text or "visa" in clean_text or "mastercard" in clean_text:
+    elif "kredi kart" in clean_text or "visa" in clean_text or "mastercard" in clean_text:
         result["odeme_tipi"] = "Kredi Kartı"
 
-    #  KATEGORİ
-    if any(k in clean_text for k in INCOME_KEYWORDS):
+    # Kategori
+    if any(w in clean_text for w in INCOME_KEYWORDS):
         result["kategori"] = "Gelir"
-    elif any(k in clean_text for k in EXPENSE_KEYWORDS):
+    elif any(w in clean_text for w in EXPENSE_KEYWORDS):
         result["kategori"] = "Gider"
     else:
         result["kategori"] = "Bilinmiyor"
 
-    #  SATICI (ilk büyük harfli blok)
+    # Satıcı adı (büyük harfler)
     satıcı = re.findall(r"[A-ZÇĞİÖŞÜ\s]{3,}", text)
     if satıcı:
         result["satıcı"] = satıcı[0].strip()
