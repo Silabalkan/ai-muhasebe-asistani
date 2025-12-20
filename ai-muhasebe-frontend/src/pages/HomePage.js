@@ -29,10 +29,9 @@ export default function HomePage() {
     <>
       {/* FİŞ YÜKLEME */}
       <section className="card upload-card">
-        <h2>Fiş Yükle</h2>
+        <h2>📸 Fiş Analiz Et</h2>
         <p className="upload-desc">
-          Fiş veya fatura görselini yükleyin, sistem otomatik olarak muhasebe
-          bilgilerini çıkarsın.
+          Fiş veya fatura görselini yükleyin. AI sistem otomatik olarak muhasebe bilgilerini çıkarsın ve kategorize etsin.
         </p>
 
         <div className="upload-row">
@@ -46,13 +45,13 @@ export default function HomePage() {
             }}
           />
           <button onClick={handleUpload} disabled={loading}>
-            {loading ? "Analiz ediliyor..." : "Analiz Et"}
+            {loading ? "⏳ Analiz ediliyor..." : "🚀 Analiz Et"}
           </button>
         </div>
 
         {file && (
           <p className="file-name">
-            Seçilen dosya: <span>{file.name}</span>
+            ✓ Seçilen dosya: <span>{file.name}</span>
           </p>
         )}
       </section>
@@ -60,15 +59,15 @@ export default function HomePage() {
       {/* ANALİZ SONUÇLARI */}
       {(loading || result) && (
         <section className="card result-card">
-          <h2>Analiz Sonuçları</h2>
+          <h2>✨ Analiz Sonuçları</h2>
 
           {loading && (
-            <p className="empty-text">Fiş analiz ediliyor, lütfen bekleyin...</p>
+            <p className="empty-text">⏳ Fiş analiz ediliyor, lütfen bekleyin...</p>
           )}
 
           {result && (
             <>
-              <p className="success-text">✔️ Fiş başarıyla analiz edildi ve kaydedildi</p>
+              <p className="success-text">✅ Fiş başarıyla analiz edildi ve kaydedildi</p>
 
               <div className="result-layout">
                 {/* SOL: FİŞ GÖRSELİ */}
@@ -85,51 +84,51 @@ export default function HomePage() {
                 {/* SAĞ: ANALİZ BİLGİLERİ */}
                 <div className="result-grid">
                   <div className="result-row">
-                    <span className="label">Toplam Tutar:</span>
+                    <span className="label">💰 Tutar:</span>
                     <span className="value highlight">{result.total_amount} ₺</span>
                   </div>
 
                   <div className="result-row">
-                    <span className="label">Ödeme Tipi:</span>
-                    <span className="value">{result.payment_type || "-"}</span>
-                  </div>
-
-                  <div className="result-row">
-                    <span className="label">Kategori:</span>
+                    <span className="label">🏪 Kategorisi:</span>
                     <span className="value">{result.category || "-"}</span>
                   </div>
 
                   <div className="result-row">
-                    <span className="label">Tarih:</span>
+                    <span className="label">💳 Ödeme Tipi:</span>
+                    <span className="value">{result.payment_type || "-"}</span>
+                  </div>
+
+                  <div className="result-row">
+                    <span className="label">📅 Tarih:</span>
                     <span className="value">{result.invoice_date || "-"}</span>
                   </div>
 
                   <div className="result-row">
-                    <span className="label">KDV Oranı:</span>
+                    <span className="label">🧾 Satıcı:</span>
+                    <span className="value">{result.vendor || "-"}</span>
+                  </div>
+
+                  <div className="result-row">
+                    <span className="label">📊 KDV Oranı:</span>
                     <span className="value">
                       {result.kdv_rate != null ? `%${result.kdv_rate}` : "-"}
                     </span>
                   </div>
 
                   <div className="result-row">
-                    <span className="label">KDV Tutarı:</span>
+                    <span className="label">📈 KDV Tutarı:</span>
                     <span className="value">
                       {result.kdv_amount != null ? `${result.kdv_amount} ₺` : "-"}
                     </span>
                   </div>
 
                   <div className="result-row">
-                    <span className="label">Satıcı / Barkod:</span>
-                    <span className="value">{result.vendor || "-"}</span>
+                    <span className="label">📝 Dosya:</span>
+                    <span className="value small">{result.filename}</span>
                   </div>
 
                   <div className="result-row">
-                    <span className="label">Dosya Adı:</span>
-                    <span className="value">{result.filename}</span>
-                  </div>
-
-                  <div className="result-row">
-                    <span className="label">Kayıt Zamanı:</span>
+                    <span className="label">⏱️ Kayıt Zamanı:</span>
                     <span className="value small">
                       {new Date(result.created_at).toLocaleString("tr-TR")}
                     </span>

@@ -52,31 +52,63 @@ export default function ReportsPage() {
         {
           label: "₺ Tutar",
           data: [summary.total_income, summary.total_expense],
-          backgroundColor: ["#16a34a", "#dc2626"],
+          backgroundColor: ["#10b981", "#ef4444"],
           borderRadius: 8,
+          borderWidth: 2,
+          borderColor: ["#059669", "#dc2626"],
         },
       ],
     };
 
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        display: true,
+        position: "top",
+        labels: {
+          padding: 20,
+          font: {
+            size: 14,
+            weight: 600,
+          },
+        },
+      },
+      title: {
+        display: false,
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          callback: function (value) {
+            return value + " ₺";
+          },
+        },
+      },
+    },
+  };
+
   return (
     <section className="card">
-      <h2>Finansal Raporlar</h2>
+      <h2>📊 Finansal Raporlar</h2>
 
       {/* FİLTRE */}
       <div className="filter-row">
-        <label>Dönem:</label>
+        <label>🗓️ Dönem Seçin:</label>
         <select
           value={period}
           onChange={(e) => setPeriod(e.target.value)}
         >
-          <option value="weekly">Haftalık</option>
-          <option value="monthly">Aylık</option>
-          <option value="yearly">Yıllık</option>
+          <option value="weekly">📅 Haftalık</option>
+          <option value="monthly">📆 Aylık</option>
+          <option value="yearly">📅 Yıllık</option>
         </select>
       </div>
 
       {loading && (
-        <p className="empty-text">Rapor yükleniyor...</p>
+        <p className="empty-text">⏳ Rapor yükleniyor...</p>
       )}
 
       {!loading && summary && (
@@ -84,25 +116,25 @@ export default function ReportsPage() {
           {/* ÖZET KARTLAR */}
           <div className="summary-cards">
             <div className="summary income">
-              <span>Toplam Gelir</span>
-              <strong>{summary.total_income} ₺</strong>
+              <span>💰 Toplam Gelir</span>
+              <strong>{summary.total_income.toLocaleString("tr-TR")} ₺</strong>
             </div>
 
             <div className="summary expense">
-              <span>Toplam Gider</span>
-              <strong>{summary.total_expense} ₺</strong>
+              <span>💸 Toplam Gider</span>
+              <strong>{summary.total_expense.toLocaleString("tr-TR")} ₺</strong>
             </div>
 
             <div className="summary net">
-              <span>Net Durum</span>
-              <strong>{summary.net} ₺</strong>
+              <span>📈 Net Durum</span>
+              <strong>{summary.net.toLocaleString("tr-TR")} ₺</strong>
             </div>
           </div>
 
           {/* 🔴 Chart SADECE data varsa render */}
           {chartData && (
             <div className="chart-wrapper">
-              <Bar data={chartData} />
+              <Bar data={chartData} options={chartOptions} />
             </div>
           )}
         </>

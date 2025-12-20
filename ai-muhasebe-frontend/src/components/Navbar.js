@@ -5,8 +5,8 @@ export default function Navbar() {
   return (
     <header className="app-header">
       <div className="brand">
-        <span className="app-icon">🧾</span>
-        <h1>AI Muhasebe Asistanı</h1>
+        <span className="app-icon">💼</span>
+        <h1>AI Muhasebe</h1>
       </div>
 
       <nav className="nav">
@@ -17,7 +17,7 @@ export default function Navbar() {
             isActive ? "nav-link active" : "nav-link"
           }
         >
-          Ana Sayfa
+          🏠 Ana Sayfa
         </NavLink>
 
         <NavLink
@@ -26,7 +26,7 @@ export default function Navbar() {
             isActive ? "nav-link active" : "nav-link"
           }
         >
-          Kayıtlı Fişler
+          📋 Fişler
         </NavLink>
 
         <NavLink
@@ -35,7 +35,7 @@ export default function Navbar() {
             isActive ? "nav-link active" : "nav-link"
           }
         >
-          Raporlar
+          📊 Raporlar
         </NavLink>
 
         <NavLink
@@ -44,7 +44,7 @@ export default function Navbar() {
             isActive ? "nav-link active" : "nav-link"
           }
         >
-          Gelir Ekle
+          ➕ Gelir Ekle
         </NavLink>
       </nav>
     </header>

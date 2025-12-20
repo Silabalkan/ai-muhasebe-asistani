@@ -21,14 +21,23 @@ export default function InvoicesPage() {
     }
   };
 
+  const getCategoryBadge = (category) => {
+    if (category === "Gelir") {
+      return "🟢";
+    } else if (category === "Gider") {
+      return "🔴";
+    }
+    return "⚪";
+  };
+
   return (
     <section className="card">
-      <h2>Kayıtlı Fişler</h2>
+      <h2>📋 Kayıtlı Fişler</h2>
 
-      {loading && <p className="empty-text">Yükleniyor...</p>}
+      {loading && <p className="empty-text">⏳ Yükleniyor...</p>}
 
       {!loading && invoices.length === 0 && (
-        <p className="empty-text">Henüz kayıtlı fiş bulunmuyor.</p>
+        <p className="empty-text">📭 Henüz kayıtlı fiş bulunmuyor.</p>
       )}
 
       {!loading && invoices.length > 0 && (
@@ -36,22 +45,26 @@ export default function InvoicesPage() {
           <table className="invoice-table">
             <thead>
               <tr>
-                <th>Tarih</th>
-                <th>Satıcı</th>
-                <th>Kategori</th>
-                <th>Ödeme</th>
-                <th>Tutar</th>
+                <th>📅 Tarih</th>
+                <th>🏪 Satıcı</th>
+                <th>📌 Kategori</th>
+                <th>💳 Ödeme Tipi</th>
+                <th>💰 Tutar</th>
               </tr>
             </thead>
             <tbody>
               {invoices.map((inv) => (
                 <tr key={inv.id}>
-                  <td>{inv.invoice_date || "-"}</td>
+                  <td>{inv.invoice_date || "Tarih yok"}</td>
                   <td>{inv.vendor || "-"}</td>
-                  <td>{inv.category || "-"}</td>
+                  <td>
+                    <span>
+                      {getCategoryBadge(inv.category)} {inv.category || "-"}
+                    </span>
+                  </td>
                   <td>{inv.payment_type || "-"}</td>
                   <td className="amount">
-                    {inv.total_amount} ₺
+                    {inv.total_amount?.toLocaleString("tr-TR") || "0"} ₺
                   </td>
                 </tr>
               ))}
