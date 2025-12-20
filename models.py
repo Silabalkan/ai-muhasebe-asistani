@@ -1,6 +1,6 @@
 # models.py
-from sqlalchemy import Column, Integer, String, Float, Text, DateTime
-from datetime import datetime
+from sqlalchemy import Column, Integer, String, Float, Date, DateTime
+from sqlalchemy.sql import func
 from db import Base
 
 class Invoice(Base):
@@ -8,23 +8,22 @@ class Invoice(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    # Dosya bilgisi
     filename = Column(String, nullable=False)
+    raw_text = Column(String, nullable=False)
 
-    # OCR ham metin
-    raw_text = Column(Text, nullable=False)
+    total_amount = Column(Float, nullable=True)
+    payment_type = Column(String, nullable=True)
 
-    # Analiz edilen alanlar
-    total_amount = Column(Float, nullable=True)        # Toplam tutar
-    payment_type = Column(String(20), nullable=True)   # "Nakit", "Kredi Kartı", ...
-    kdv_rate = Column(Integer, nullable=True)          # 0, 1, 8, 18 ...
-    kdv_amount = Column(Float, nullable=True)          # TOPKDV 0,38 gibi (opsiyonel)
-    category = Column(String(20), nullable=True)       # "Gelir", "Gider", ...
+    kdv_rate = Column(Float, nullable=True)
+    kdv_amount = Column(Float, nullable=True)
 
-    # Yeni alanlar:
-    invoice_date = Column(String(20), nullable=True)   # Fiş tarihi (ör: 16/12/2017)
-    vendor = Column(String(100), nullable=True)        # Satıcı adı (market ismi)
+    category = Column(String, nullable=False)  # Gelir / Gider
+    invoice_date = Column(Date, nullable=True)
+    vendor = Column(String, nullable=True)
 
-    # Kayıt zamanı (sistem zamanı)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-
+    # 🔴 BURASI KRİTİK
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),  # ← OTOMATİK DOLDUR
+        nullable=False
+    )

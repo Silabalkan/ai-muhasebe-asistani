@@ -1,4 +1,6 @@
-# main.py
+# =========================
+# IMPORTLAR
+# =========================
 from fastapi import FastAPI, File, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -7,21 +9,37 @@ from PIL import Image
 import pytesseract
 import io
 from typing import List
-
-# Tesseract yolu (Windows)
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+from datetime import date, timedelta, datetime
 
 # Yerel modüller
 import models
 from db import Base, engine, get_db
-from crud import create_invoice, list_invoices
-from schemas import InvoiceRead
+from crud import (
+    create_invoice,
+    list_invoices,
+    create_manual_income
+)
+from schemas import (
+    InvoiceRead,
+    ManualIncomeCreate
+)
 from nlp_utils import analyze_invoice_text
 
-# FastAPI app
+# =========================
+# TESSERACT (WINDOWS)
+# =========================
+pytesseract.pytesseract.tesseract_cmd = (
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+)
+
+# =========================
+# FASTAPI APP
+# =========================
 app = FastAPI(title="AI Muhasebe Asistanı - OCR API")
 
+# =========================
 # CORS
+# =========================
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -30,102 +48,142 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Veritabanı tablolarını oluştur
+# =========================
+# DB OLUŞTUR
+# =========================
 Base.metadata.create_all(bind=engine)
 
+# =========================
+# TARİH GÜVENLİ PARSE
+# =========================
+def safe_parse_date(value):
+    if not value:
+        return None
 
-# 1) Sağlık kontrolü
+    if isinstance(value, date):
+        return value
+
+    try:
+        # ISO format: YYYY-MM-DD
+        return datetime.fromisoformat(value).date()
+    except Exception:
+        try:
+            # DD/MM/YYYY format
+            return datetime.strptime(value, "%d/%m/%Y").date()
+        except Exception:
+            return None
+
+# =========================
+# HEALTH CHECK
+# =========================
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
-
-# 2) Debug için sadece OCR çıktısı
-@app.post("/debug-ocr")
-async def debug_ocr(file: UploadFile = File(...)):
-    data = await file.read()
-    image = Image.open(io.BytesIO(data))
-
-    try:
-        text = pytesseract.image_to_string(image, lang="tur")
-    except Exception:
-        text = pytesseract.image_to_string(image)
-
-    return {"raw_text": text}
-
-
+# =========================
+# FİŞ YÜKLE + OCR + NLP
+# =========================
 @app.post("/invoices/upload-analyze", response_model=InvoiceRead)
-async def upload_analyze_save(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    """
-    Kullanıcıdan alınan fiş/fatura görselini OCR ile okuyup
-    NLP analizinden geçirerek veritabanına kaydeder.
-    """
+async def upload_analyze_save(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
     content = await file.read()
     image = Image.open(io.BytesIO(content))
 
-    # --- OCR ---
     try:
-        text = pytesseract.image_to_string(image, lang="tur")
+        raw_text = pytesseract.image_to_string(image, lang="tur")
     except Exception:
-        text = pytesseract.image_to_string(image)
+        raw_text = pytesseract.image_to_string(image)
 
-    # --- NLP Analizi ---
-    result = analyze_invoice_text(text)
+    result = analyze_invoice_text(raw_text)
 
-    inv = create_invoice(
-        db,
+    # Tarih bulunamadıysa, bugünü atayalım
+    parsed_date = safe_parse_date(result.get("tarih"))
+    if not parsed_date:
+        parsed_date = date.today()
+
+    invoice = create_invoice(
+        db=db,
         filename=file.filename,
-        raw_text=text,
+        raw_text=raw_text,
         total_amount=result.get("tutar"),
         payment_type=result.get("odeme_tipi"),
         kdv_rate=result.get("kdv_orani"),
         kdv_amount=result.get("kdv_tutari"),
-        category=result.get("kategori"),
-        invoice_date=result.get("tarih"),
+        category=result.get("kategori", "Gider"),
+        invoice_date=parsed_date,
         vendor=result.get("satıcı"),
     )
 
-    return inv
+    return invoice
 
-
-# 4) Kayıtlı fişleri listele
+# =========================
+# KAYITLI FİŞLER
+# =========================
 @app.get("/invoices", response_model=List[InvoiceRead])
-def get_invoices(db: Session = Depends(get_db), limit: int = 50):
+def get_invoices(
+    db: Session = Depends(get_db),
+    limit: int = 50
+):
     return list_invoices(db, limit=limit)
 
+# =========================
+# MANUEL GELİR EKLE
+# =========================
+@app.post("/invoices/manual-income")
+def add_manual_income(
+    data: ManualIncomeCreate,
+    db: Session = Depends(get_db)
+):
+    return create_manual_income(db, data)
 
-# 5) Özet rapor
+# =========================
+# RAPOR ÖZETİ
+# =========================
+# =========================
+# RAPOR ÖZETİ
+# =========================
 @app.get("/reports/summary")
-def summary_report(db: Session = Depends(get_db)):
+def summary_report(
+    period: str = "monthly",
+    db: Session = Depends(get_db)
+):
+    today = date.today()
+
+    if period == "weekly":
+        start_date = today - timedelta(days=7)
+    elif period == "yearly":
+        start_date = today.replace(month=1, day=1)
+    else:  # monthly
+        start_date = today.replace(day=1)
+
+    end_date = today
+
     income = (
         db.query(func.sum(models.Invoice.total_amount))
-        .filter(models.Invoice.category == "Gelir")
+        .filter(
+            models.Invoice.category == "Gelir",
+            models.Invoice.invoice_date >= start_date,
+            models.Invoice.invoice_date <= end_date
+        )
         .scalar()
-        or 0.0
+        or 0
     )
+
     expense = (
         db.query(func.sum(models.Invoice.total_amount))
-        .filter(models.Invoice.category == "Gider")
+        .filter(
+            models.Invoice.category == "Gider",
+            models.Invoice.invoice_date >= start_date,
+            models.Invoice.invoice_date <= end_date
+        )
         .scalar()
-        or 0.0
+        or 0
     )
-
-    net = income - expense
-
-    by_cat = (
-        db.query(models.Invoice.category, func.sum(models.Invoice.total_amount))
-        .group_by(models.Invoice.category)
-        .all()
-    )
-
-    by_cat = [
-        {"category": c or "Bilinmiyor", "total": float(t or 0)}
-        for c, t in by_cat
-    ]
 
     return {
-        "income": float(income),
-        "expense": float(expense),
-        "net": float(net),
-        "by_category": by_cat,
+        "total_income": float(income),
+        "total_expense": float(expense),
+        "net": float(income - expense),
     }

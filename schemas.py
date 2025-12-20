@@ -1,23 +1,31 @@
-from pydantic import BaseModel
-from datetime import datetime
-from typing import Optional
+# schemas.py
+from pydantic import BaseModel, field_validator
+from datetime import date, datetime
 
-class InvoiceBase(BaseModel):
-    filename: str
-    raw_text: str
-
-    total_amount: Optional[float] = None
-    payment_type: Optional[str] = None
-    kdv_rate: Optional[int] = None
-    kdv_amount: Optional[float] = None
-    category: Optional[str] = None
-
-    invoice_date: Optional[str] = None
-    vendor: Optional[str] = None
-
-class InvoiceRead(InvoiceBase):
+class InvoiceRead(BaseModel):
     id: int
+    filename: str
+    total_amount: float | None
+    payment_type: str | None
+    kdv_rate: float | None
+    kdv_amount: float | None
+    category: str
+    invoice_date: date | None
+    vendor: str | None
     created_at: datetime
 
     class Config:
-        from_attributes = True   # SQLAlchemy objesinden okumak için
+        from_attributes = True
+
+
+class ManualIncomeCreate(BaseModel):
+    amount: float
+    date: date
+    description: str
+
+    @field_validator("date", mode="before")
+    @classmethod
+    def parse_date(cls, v):
+        if isinstance(v, str):
+            return datetime.strptime(v, "%Y-%m-%d").date()
+        return v

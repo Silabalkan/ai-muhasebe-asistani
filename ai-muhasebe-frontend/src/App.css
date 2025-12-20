@@ -1,17 +1,19 @@
-/* Genel yapı */
+/* Genel */
 .app-root {
   min-height: 100vh;
   background: #f5f7fb;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
-  color: #222;
+  color: #111827;
 }
 
+/* NAVBAR / HEADER */
 .app-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 20px 40px;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 32px;
   border-bottom: 1px solid #e1e4f0;
   background: #ffffffcc;
   backdrop-filter: blur(8px);
@@ -20,40 +22,73 @@
   z-index: 10;
 }
 
-.app-header h1 {
-  font-size: 22px;
-  margin: 0;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .app-icon {
-  font-size: 26px;
+  font-size: 22px;
 }
 
-/* Ana içerik */
+.app-header h1 {
+  font-size: 18px;
+  margin: 0;
+  font-weight: 700;
+}
+
+/* Menü */
+.nav {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.nav-link {
+  text-decoration: none;
+  color: #374151;
+  font-size: 14px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.nav-link:hover {
+  background: #eef2ff;
+  color: #1d4ed8;
+}
+
+.nav-link.active {
+  background: #2563eb;
+  color: #fff;
+}
+
+/* İçerik */
 .app-main {
-  max-width: 900px;
-  margin: 30px auto 60px;
+  max-width: 1000px;
+  margin: 26px auto 60px;
   padding: 0 20px;
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
-/* Kartlar */
+/* Kart */
 .card {
   background: #fff;
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 20px 24px;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
   border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
 }
 
 .card h2 {
-  margin: 0 0 8px;
+  margin: 0 0 12px;
   font-size: 18px;
 }
 
-/* Yükleme kısmı */
+/* Upload */
 .upload-desc {
   margin: 0 0 16px;
   color: #6b7280;
@@ -101,41 +136,50 @@
   font-weight: 600;
 }
 
-/* Sonuç kartı */
-.result-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+/* Result */
+.success-text {
+  font-size: 13px;
+  color: #16a34a;
   margin-bottom: 12px;
 }
 
-.result-header h2 {
-  margin: 0;
-}
-
-.pin {
-  font-size: 18px;
-}
-
 .empty-text {
-  font-size: 14px;
   color: #6b7280;
+  font-size: 14px;
 }
 
-/* Sonuç grid’i */
+.result-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.preview-wrapper {
+  display: flex;
+  justify-content: center;
+}
+
+.preview-image {
+  width: 220px;
+  max-width: 100%;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+/* Grid */
 .result-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 10px 32px;
-  margin-top: 4px;
 }
 
 .result-row {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
   border-bottom: 1px dashed #e5e7eb;
   padding: 6px 0;
+  gap: 10px;
 }
 
 .label {
@@ -146,8 +190,8 @@
 
 .value {
   font-size: 14px;
-  color: #111827;
   text-align: right;
+  color: #111827;
 }
 
 .value.small {
@@ -155,13 +199,29 @@
   color: #6b7280;
 }
 
-.currency {
-  font-size: 12px;
-  color: #6b7280;
+.highlight {
+  font-size: 18px;
+  font-weight: 800;
+  color: #2563eb;
 }
 
-/* Küçük ekranlar */
-@media (max-width: 600px) {
+/* Responsive */
+@media (max-width: 768px) {
+  .app-header {
+    padding: 14px 16px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .nav {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .result-layout {
+    grid-template-columns: 1fr;
+  }
+
   .upload-row {
     flex-direction: column;
     align-items: flex-start;
@@ -170,4 +230,112 @@
   .upload-row button {
     width: 100%;
   }
+}
+
+/* TABLO */
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.invoice-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.invoice-table th,
+.invoice-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+}
+
+.invoice-table th {
+  background: #f1f5f9;
+  font-weight: 600;
+}
+
+.invoice-table tr:hover {
+  background: #f9fafb;
+}
+
+.invoice-table .amount {
+  font-weight: 700;
+  color: #2563eb;
+}
+
+/* RAPOR */
+.filter-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.filter-row select {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+}
+
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.summary {
+  padding: 14px;
+  border-radius: 12px;
+  color: #fff;
+}
+
+.summary span {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.summary strong {
+  font-size: 20px;
+  display: block;
+  margin-top: 4px;
+}
+
+.summary.income {
+  background: #16a34a;
+}
+
+.summary.expense {
+  background: #dc2626;
+}
+
+.summary.net {
+  background: #2563eb;
+}
+
+.chart-wrapper {
+  max-width: 600px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.form-group input {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+}
+
+button {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
 }
