@@ -54,22 +54,22 @@ async def debug_ocr(file: UploadFile = File(...)):
     return {"raw_text": text}
 
 
-# 3) OCR + NLP + Veritabanına kaydet
 @app.post("/invoices/upload-analyze", response_model=InvoiceRead)
-async def upload_analyze_save(
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-):
+async def upload_analyze_save(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """
+    Kullanıcıdan alınan fiş/fatura görselini OCR ile okuyup
+    NLP analizinden geçirerek veritabanına kaydeder.
+    """
     content = await file.read()
     image = Image.open(io.BytesIO(content))
 
-    # OCR
+    # --- OCR ---
     try:
         text = pytesseract.image_to_string(image, lang="tur")
     except Exception:
         text = pytesseract.image_to_string(image)
 
-    # NLP analizi
+    # --- NLP Analizi ---
     result = analyze_invoice_text(text)
 
     inv = create_invoice(
@@ -79,7 +79,10 @@ async def upload_analyze_save(
         total_amount=result.get("tutar"),
         payment_type=result.get("odeme_tipi"),
         kdv_rate=result.get("kdv_orani"),
+        kdv_amount=result.get("kdv_tutari"),
         category=result.get("kategori"),
+        invoice_date=result.get("tarih"),
+        vendor=result.get("satıcı"),
     )
 
     return inv
