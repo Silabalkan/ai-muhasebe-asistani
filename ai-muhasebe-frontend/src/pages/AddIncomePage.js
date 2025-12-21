@@ -77,6 +77,15 @@ export default function AddIncomePage() {
 
   return (
     <>
+      {/* BİLGİLENDİRME */}
+      <section className="card info-card">
+        <h3>ℹ️ Gelirinizi Kaydedin</h3>
+        <p className="info-text">
+          Tüm gelir kaynaklarınızı takip etmek önemlidir. Fiş veya fatura yükleyerek veya manuel olarak gelir ekleyerek 
+          işletmenizin finansal durumunu güncel tutabilirsiniz. Gelir ve gider dengesini rapor sayfasından takip edebilirsiniz.
+        </p>
+      </section>
+
       {/* TAB SEÇİMİ */}
       <section className="card">
         <div className="tab-buttons">

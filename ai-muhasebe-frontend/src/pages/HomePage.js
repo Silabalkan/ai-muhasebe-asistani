@@ -27,6 +27,16 @@ export default function HomePage() {
 
   return (
     <>
+      {/* BİLGİLENDİRME */}
+      <section className="card info-card">
+        <h3>ℹ️ Giden Satışlarınızı Kaydedin</h3>
+        <p className="info-text">
+          İşletmenizin giden satışlarını ve harcamalarını takip etmek için lütfen fiş veya faturalarınızı yükleyiniz. 
+          AI sistem otomatik olarak muhasebe bilgilerinizi çıkarır ve kategorize eder. 
+          Bu sayede finansal durumunuzu gerçek zamanlı olarak izleyebilirsiniz.
+        </p>
+      </section>
+
       {/* FİŞ YÜKLEME */}
       <section className="card upload-card">
         <h2>📸 Fiş Analiz Et</h2>

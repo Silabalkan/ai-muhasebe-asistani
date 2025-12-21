@@ -493,6 +493,29 @@
 }
 
 /* ================================
+   BİLGİ KARTI
+   ================================ */
+.info-card {
+  background: linear-gradient(135deg, #e6f2ff 0%, #f0f4ff 100%);
+  border: 2px solid var(--primary);
+  border-left: 5px solid var(--primary);
+}
+
+.info-card h3 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.info-text {
+  margin: 0;
+  color: #374151;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ================================
    TAB BUTONLARI
    ================================ */
 .tab-buttons {

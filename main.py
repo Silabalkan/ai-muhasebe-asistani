@@ -81,13 +81,14 @@ def health_check():
     return {"status": "ok"}
 
 # =========================
-# FİŞ YÜKLE + OCR + NLP
+# FİŞ YÜKLE + OCR + NLP (ANA SAYFADA - GIDER OLARAK)
 # =========================
 @app.post("/invoices/upload-analyze", response_model=InvoiceRead)
 async def upload_analyze_save(
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
+    """Ana sayfadan fiş yükle - HER ZAMAN Gider olarak kaydet"""
     content = await file.read()
     image = Image.open(io.BytesIO(content))
 
@@ -111,7 +112,7 @@ async def upload_analyze_save(
         payment_type=result.get("odeme_tipi"),
         kdv_rate=result.get("kdv_orani"),
         kdv_amount=result.get("kdv_tutari"),
-        category=result.get("kategori", "Gider"),
+        category="Gider",  # ✅ ANA SAYFA = HER ZAMAN GİDER
         invoice_date=parsed_date,
         vendor=result.get("satıcı"),
     )
