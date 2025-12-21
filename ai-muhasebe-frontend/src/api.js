@@ -37,6 +37,25 @@ export const getReportSummary = (params) => {
   return API.get("/reports/summary", { params });
 };
 
+// HIZLI ÖZET (ANA SAYFA İÇİN)
+export const getQuickSummary = () => {
+  return API.get("/reports/quick-summary");
+};
+
+// GELİŞMİŞ RAPOR (KPI & ANALİZ)
+export const getAdvancedReport = (params) => {
+  return API.get("/reports/advanced", { params });
+};
+
+// AYLIK TREND VERİSİ
+export const getTrendReport = (params) => {
+  return API.get("/reports/trend", { params });
+};
+
+// KATEGORİ DAĞILIM
+export const getCategoryDistribution = (params) => {
+  return API.get("/reports/category-distribution", { params });
+};
 
 export const addManualIncome = (payload) => {
   return API.post("/invoices/manual-income", payload);

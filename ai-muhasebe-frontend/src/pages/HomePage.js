@@ -1,11 +1,29 @@
-import React, { useState } from "react";
-import { uploadInvoice } from "../api";
+import React, { useState, useEffect } from "react";
+import { uploadInvoice, getQuickSummary } from "../api";
 
 export default function HomePage() {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [summary, setSummary] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+
+  useEffect(() => {
+    loadSummary();
+  }, []);
+
+  const loadSummary = async () => {
+    try {
+      setSummaryLoading(true);
+      const response = await getQuickSummary();
+      setSummary(response.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
 
   const handleUpload = async () => {
     if (!file) {
@@ -17,6 +35,7 @@ export default function HomePage() {
       setLoading(true);
       const response = await uploadInvoice(file);
       setResult(response.data);
+      loadSummary(); // Özeti güncelle
     } catch (err) {
       console.error(err);
       alert("Bir hata oluştu");
@@ -148,6 +167,132 @@ export default function HomePage() {
             </>
           )}
         </section>
+      )}
+
+      {/* ÖZET KARTLARı */}
+      {!summaryLoading && summary && (
+        <>
+          {/* BUGÜNÜN ÖZETİ */}
+          <section className="card">
+            <h3>📅 Bugün</h3>
+            <div className="quick-summary-grid">
+              <div className="summary-item income-item">
+                <div className="summary-icon">💰</div>
+                <div className="summary-text">
+                  <span className="summary-label">Gelir</span>
+                  <span className="summary-amount">
+                    {summary.today.income.toLocaleString("tr-TR", {
+                      maximumFractionDigits: 2,
+                    })} ₺
+                  </span>
+                </div>
+              </div>
+
+              <div className="summary-item expense-item">
+                <div className="summary-icon">💸</div>
+                <div className="summary-text">
+                  <span className="summary-label">Gider</span>
+                  <span className="summary-amount">
+                    {summary.today.expense.toLocaleString("tr-TR", {
+                      maximumFractionDigits: 2,
+                    })} ₺
+                  </span>
+                </div>
+              </div>
+
+              <div className="summary-item net-item">
+                <div className="summary-icon">📊</div>
+                <div className="summary-text">
+                  <span className="summary-label">Net</span>
+                  <span
+                    className={`summary-amount ${
+                      summary.today.net >= 0 ? "positive" : "negative"
+                    }`}
+                  >
+                    {summary.today.net.toLocaleString("tr-TR", {
+                      maximumFractionDigits: 2,
+                    })} ₺
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* AYLIK ÖZET */}
+          <section className="card">
+            <h3>📆 Bu Ay</h3>
+            <div className="quick-summary-grid">
+              <div className="summary-item income-item">
+                <div className="summary-icon">💰</div>
+                <div className="summary-text">
+                  <span className="summary-label">Gelir</span>
+                  <span className="summary-amount">
+                    {summary.month.income.toLocaleString("tr-TR", {
+                      maximumFractionDigits: 2,
+                    })} ₺
+                  </span>
+                </div>
+              </div>
+
+              <div className="summary-item expense-item">
+                <div className="summary-icon">💸</div>
+                <div className="summary-text">
+                  <span className="summary-label">Gider</span>
+                  <span className="summary-amount">
+                    {summary.month.expense.toLocaleString("tr-TR", {
+                      maximumFractionDigits: 2,
+                    })} ₺
+                  </span>
+                </div>
+              </div>
+
+              <div className="summary-item net-item">
+                <div className="summary-icon">📊</div>
+                <div className="summary-text">
+                  <span className="summary-label">Net</span>
+                  <span
+                    className={`summary-amount ${
+                      summary.month.net >= 0 ? "positive" : "negative"
+                    }`}
+                  >
+                    {summary.month.net.toLocaleString("tr-TR", {
+                      maximumFractionDigits: 2,
+                    })} ₺
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* SON İŞLEMLER */}
+          {summary.recent && summary.recent.length > 0 && (
+            <section className="card">
+              <h3>⚡ Son İşlemler</h3>
+              <div className="recent-transactions">
+                {summary.recent.map((transaction, idx) => (
+                  <div key={idx} className="transaction-item">
+                    <div className="transaction-info">
+                      <span className="transaction-vendor">
+                        {transaction.vendor || "Bilinmiyor"}
+                      </span>
+                      <span className="transaction-date">
+                        {new Date(transaction.date).toLocaleDateString("tr-TR")}
+                      </span>
+                    </div>
+                    <span
+                      className={`transaction-amount ${transaction.category.toLowerCase()}`}
+                    >
+                      {transaction.category === "Gelir" ? "+" : "-"}
+                      {transaction.amount.toLocaleString("tr-TR", {
+                        maximumFractionDigits: 2,
+                      })} ₺
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </>
       )}
     </>
   );
