@@ -15,6 +15,18 @@ export const uploadInvoice = (file) => {
   });
 };
 
+// GELİR OLARAK FİŞ YÜKLE (AddIncomePage'de kullanılır)
+export const uploadIncomeInvoice = (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return API.post("/invoices/upload-analyze-income", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+};
+
 // TÜM FİŞLERİ GETİR
 export const getInvoices = () => {
   return API.get("/invoices");

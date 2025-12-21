@@ -119,6 +119,45 @@ async def upload_analyze_save(
     return invoice
 
 # =========================
+# FİŞ YÜKLE + OCR + NLP (GELİR OLARAK)
+# =========================
+@app.post("/invoices/upload-analyze-income", response_model=InvoiceRead)
+async def upload_analyze_income(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """Fiş yükle ve HER ZAMAN Gelir olarak kaydet"""
+    content = await file.read()
+    image = Image.open(io.BytesIO(content))
+
+    try:
+        raw_text = pytesseract.image_to_string(image, lang="tur")
+    except Exception:
+        raw_text = pytesseract.image_to_string(image)
+
+    result = analyze_invoice_text(raw_text)
+
+    # Tarih bulunamadıysa, bugünü atayalım
+    parsed_date = safe_parse_date(result.get("tarih"))
+    if not parsed_date:
+        parsed_date = date.today()
+
+    invoice = create_invoice(
+        db=db,
+        filename=file.filename,
+        raw_text=raw_text,
+        total_amount=result.get("tutar"),
+        payment_type=result.get("odeme_tipi"),
+        kdv_rate=result.get("kdv_orani"),
+        kdv_amount=result.get("kdv_tutari"),
+        category="Gelir",  # ✅ HER ZAMAN GELİR OLARAK KAYDET
+        invoice_date=parsed_date,
+        vendor=result.get("satıcı"),
+    )
+
+    return invoice
+
+# =========================
 # KAYITLI FİŞLER
 # =========================
 @app.get("/invoices", response_model=List[InvoiceRead])
