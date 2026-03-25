@@ -4,6 +4,58 @@ const API = axios.create({
   baseURL: "http://127.0.0.1:8000",
 });
 
+// ========================
+// TOKEN INTERCEPTOR
+// ========================
+API.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    const url = error?.config?.url || "";
+    const isAuthEndpoint = url.includes("/auth/login") || url.includes("/auth/register");
+
+    if (status === 401 && !isAuthEndpoint) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      localStorage.setItem("sessionExpired", "1");
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// ========================
+// AUTH
+// ========================
+export const registerUser = (email, username, password) => {
+  return API.post("/auth/register", {
+    email,
+    username,
+    password,
+  });
+};
+
+export const loginUser = (username, password) => {
+  return API.post("/auth/login", {
+    username,
+    password,
+  });
+};
+
+// ========================
+// INVOICES
+// ========================
 export const uploadInvoice = (file) => {
   const formData = new FormData();
   formData.append("file", file);

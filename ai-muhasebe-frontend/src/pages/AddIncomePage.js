@@ -121,7 +121,12 @@ export default function AddIncomePage() {
               type="file"
               accept="image/*"
               onChange={(e) => {
-                const selected = e.target.files[0];
+                const selected = e.target.files?.[0];
+                if (!selected) {
+                  setFile(null);
+                  setPreview(null);
+                  return;
+                }
                 setFile(selected);
                 setPreview(URL.createObjectURL(selected));
               }}

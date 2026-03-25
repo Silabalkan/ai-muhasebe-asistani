@@ -1,7 +1,42 @@
 # crud.py
 from sqlalchemy.orm import Session
 import models
+from auth import hash_password, verify_password
 
+# ========================
+# USER CRUD
+# ========================
+def create_user(db: Session, email: str, username: str, password: str) -> models.User:
+    """Yeni kullanıcı oluştur"""
+    hashed_password = hash_password(password)
+    user = models.User(
+        email=email,
+        username=username,
+        hashed_password=hashed_password
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+def get_user_by_username(db: Session, username: str) -> models.User | None:
+    """Username ile kullanıcı getir"""
+    return db.query(models.User).filter(models.User.username == username).first()
+
+def get_user_by_email(db: Session, email: str) -> models.User | None:
+    """Email ile kullanıcı getir"""
+    return db.query(models.User).filter(models.User.email == email).first()
+
+def authenticate_user(db: Session, username: str, password: str) -> models.User | None:
+    """Kullanıcı otoentikasyonu"""
+    user = get_user_by_username(db, username)
+    if not user or not verify_password(password, user.hashed_password):
+        return None
+    return user
+
+# ========================
+# INVOICE CRUD
+# ========================
 def create_invoice(
     db: Session,
     filename: str,
@@ -13,6 +48,7 @@ def create_invoice(
     category,
     invoice_date,
     vendor,
+    user_id: int,
 ):
     invoice = models.Invoice(
         filename=filename,
@@ -24,7 +60,7 @@ def create_invoice(
         category=category,
         invoice_date=invoice_date,
         vendor=vendor,
-        # ❌ created_at ELLE VERİLMİYOR
+        user_id=user_id,
     )
 
     db.add(invoice)
@@ -33,10 +69,11 @@ def create_invoice(
     return invoice
 
 
-def create_manual_income(db: Session, data):
-    # Eğer tarih verilmemişse, bugünü kullan
-    invoice_date = data.date if data.date else None
-    
+def create_manual_income(db: Session, data, user_id: int):
+    # Eğer tarih verilmemişse, bugünün tarihini kullan
+    from datetime import date
+    invoice_date = data.date if data.date else date.today()
+
     invoice = models.Invoice(
         filename="MANUAL",
         raw_text=data.description,
@@ -45,6 +82,7 @@ def create_manual_income(db: Session, data):
         category="Gelir",
         invoice_date=invoice_date,
         vendor=data.description,
+        user_id=user_id,
     )
 
     db.add(invoice)
@@ -53,9 +91,10 @@ def create_manual_income(db: Session, data):
     return invoice
 
 
-def list_invoices(db: Session, limit: int = 50):
+def list_invoices(db: Session, user_id: int, limit: int = 50):
     return (
         db.query(models.Invoice)
+        .filter(models.Invoice.user_id == user_id)
         .order_by(models.Invoice.created_at.desc())
         .limit(limit)
         .all()

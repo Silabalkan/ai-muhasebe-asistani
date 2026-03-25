@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+tesseract
+transformers
+pillow
+python-dotenv
+python-jose[cryptography]
+passlib[bcrypt]

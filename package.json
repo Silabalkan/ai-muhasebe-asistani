@@ -1,4 +1,10 @@
 {
+  "name": "ai-muhasebe-asistani-root",
+  "private": true,
+  "scripts": {
+    "start": "npm --prefix ai-muhasebe-frontend start",
+    "build": "npm --prefix ai-muhasebe-frontend run build"
+  },
   "dependencies": {
     "chart.js": "^4.4.1",
     "react-chartjs-2": "^5.2.0"

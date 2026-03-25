@@ -1,7 +1,7 @@
 # =========================
 # IMPORTLAR
 # =========================
-from fastapi import FastAPI, File, UploadFile, Depends
+from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -17,13 +17,22 @@ from db import Base, engine, get_db
 from crud import (
     create_invoice,
     list_invoices,
-    create_manual_income
+    create_manual_income,
+    create_user,
+    get_user_by_email,
+    get_user_by_username,
+    authenticate_user
 )
 from schemas import (
     InvoiceRead,
-    ManualIncomeCreate
+    ManualIncomeCreate,
+    UserRegister,
+    UserLogin,
+    TokenResponse,
+    UserRead
 )
 from nlp_utils import analyze_invoice_text
+from auth import get_current_user, create_access_token
 
 # =========================
 # TESSERACT (WINDOWS)
@@ -81,11 +90,80 @@ def health_check():
     return {"status": "ok"}
 
 # =========================
+# REGISTER
+# =========================
+@app.post("/auth/register", response_model=TokenResponse)
+def register(
+    user_data: UserRegister,
+    db: Session = Depends(get_db)
+):
+    """Yeni kullanıcı kaydı"""
+    # Email kontrol
+    existing_email = get_user_by_email(db, user_data.email)
+    if existing_email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email zaten kayıtlı"
+        )
+    
+    # Username kontrol
+    existing_username = get_user_by_username(db, user_data.username)
+    if existing_username:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username zaten alınmış"
+        )
+    
+    # Kullanıcı oluştur
+    user = create_user(
+        db=db,
+        email=user_data.email,
+        username=user_data.username,
+        password=user_data.password
+    )
+    
+    # Token oluştur
+    access_token = create_access_token(data={"sub": str(user.id)})
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": UserRead.from_orm(user)
+    }
+
+# =========================
+# LOGIN
+# =========================
+@app.post("/auth/login", response_model=TokenResponse)
+def login(
+    user_data: UserLogin,
+    db: Session = Depends(get_db)
+):
+    """Kullanıcı girişi"""
+    user = authenticate_user(db, user_data.username, user_data.password)
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Hatalı username veya şifre"
+        )
+    
+    # Token oluştur
+    access_token = create_access_token(data={"sub": str(user.id)})
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": UserRead.from_orm(user)
+    }
+
+# =========================
 # FİŞ YÜKLE + OCR + NLP (ANA SAYFADA - GIDER OLARAK)
 # =========================
 @app.post("/invoices/upload-analyze", response_model=InvoiceRead)
 async def upload_analyze_save(
     file: UploadFile = File(...),
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Ana sayfadan fiş yükle - HER ZAMAN Gider olarak kaydet"""
@@ -115,6 +193,7 @@ async def upload_analyze_save(
         category="Gider",  # ✅ ANA SAYFA = HER ZAMAN GİDER
         invoice_date=parsed_date,
         vendor=result.get("satıcı"),
+        user_id=current_user.id,
     )
 
     return invoice
@@ -125,6 +204,7 @@ async def upload_analyze_save(
 @app.post("/invoices/upload-analyze-income", response_model=InvoiceRead)
 async def upload_analyze_income(
     file: UploadFile = File(...),
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Fiş yükle ve HER ZAMAN Gelir olarak kaydet"""
@@ -154,6 +234,7 @@ async def upload_analyze_income(
         category="Gelir",  # ✅ HER ZAMAN GELİR OLARAK KAYDET
         invoice_date=parsed_date,
         vendor=result.get("satıcı"),
+        user_id=current_user.id,
     )
 
     return invoice
@@ -163,10 +244,11 @@ async def upload_analyze_income(
 # =========================
 @app.get("/invoices", response_model=List[InvoiceRead])
 def get_invoices(
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
     limit: int = 50
 ):
-    return list_invoices(db, limit=limit)
+    return list_invoices(db, user_id=current_user.id, limit=limit)
 
 # =========================
 # MANUEL GELİR EKLE
@@ -174,15 +256,19 @@ def get_invoices(
 @app.post("/invoices/manual-income")
 def add_manual_income(
     data: ManualIncomeCreate,
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    return create_manual_income(db, data)
+    return create_manual_income(db, data, user_id=current_user.id)
 
 # =========================
 # HIZLI ÖZET (ANA SAYFA İÇİN)
 # =========================
 @app.get("/reports/quick-summary")
-def quick_summary(db: Session = Depends(get_db)):
+def quick_summary(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """Günün/Ayın özeti - ana sayfa için"""
     today = date.today()
     month_start = today.replace(day=1)
@@ -191,6 +277,7 @@ def quick_summary(db: Session = Depends(get_db)):
     today_income = (
         db.query(func.sum(models.Invoice.total_amount))
         .filter(
+            models.Invoice.user_id == current_user.id,
             models.Invoice.category == "Gelir",
             models.Invoice.invoice_date == today
         )
@@ -201,6 +288,7 @@ def quick_summary(db: Session = Depends(get_db)):
     today_expense = (
         db.query(func.sum(models.Invoice.total_amount))
         .filter(
+            models.Invoice.user_id == current_user.id,
             models.Invoice.category == "Gider",
             models.Invoice.invoice_date == today
         )
@@ -212,6 +300,7 @@ def quick_summary(db: Session = Depends(get_db)):
     month_income = (
         db.query(func.sum(models.Invoice.total_amount))
         .filter(
+            models.Invoice.user_id == current_user.id,
             models.Invoice.category == "Gelir",
             models.Invoice.invoice_date >= month_start,
             models.Invoice.invoice_date <= today
@@ -223,6 +312,7 @@ def quick_summary(db: Session = Depends(get_db)):
     month_expense = (
         db.query(func.sum(models.Invoice.total_amount))
         .filter(
+            models.Invoice.user_id == current_user.id,
             models.Invoice.category == "Gider",
             models.Invoice.invoice_date >= month_start,
             models.Invoice.invoice_date <= today
@@ -234,6 +324,7 @@ def quick_summary(db: Session = Depends(get_db)):
     # Son işlemler
     recent = (
         db.query(models.Invoice)
+        .filter(models.Invoice.user_id == current_user.id)
         .order_by(models.Invoice.created_at.desc())
         .limit(5)
         .all()
@@ -315,6 +406,7 @@ def summary_report(
 @app.get("/reports/advanced")
 def advanced_report(
     period: str = "monthly",
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """KPI, trend ve detaylı analiz"""
@@ -333,6 +425,7 @@ def advanced_report(
     income = (
         db.query(func.sum(models.Invoice.total_amount))
         .filter(
+            models.Invoice.user_id == current_user.id,
             models.Invoice.category == "Gelir",
             models.Invoice.invoice_date >= start_date,
             models.Invoice.invoice_date <= end_date
@@ -344,6 +437,7 @@ def advanced_report(
     expense = (
         db.query(func.sum(models.Invoice.total_amount))
         .filter(
+            models.Invoice.user_id == current_user.id,
             models.Invoice.category == "Gider",
             models.Invoice.invoice_date >= start_date,
             models.Invoice.invoice_date <= end_date
@@ -356,6 +450,7 @@ def advanced_report(
     income_count = (
         db.query(func.count(models.Invoice.id))
         .filter(
+            models.Invoice.user_id == current_user.id,
             models.Invoice.category == "Gelir",
             models.Invoice.invoice_date >= start_date,
             models.Invoice.invoice_date <= end_date
@@ -367,6 +462,7 @@ def advanced_report(
     expense_count = (
         db.query(func.count(models.Invoice.id))
         .filter(
+            models.Invoice.user_id == current_user.id,
             models.Invoice.category == "Gider",
             models.Invoice.invoice_date >= start_date,
             models.Invoice.invoice_date <= end_date
@@ -388,6 +484,7 @@ def advanced_report(
     total_kdv = (
         db.query(func.sum(models.Invoice.kdv_amount))
         .filter(
+            models.Invoice.user_id == current_user.id,
             models.Invoice.kdv_amount.isnot(None),
             models.Invoice.invoice_date >= start_date,
             models.Invoice.invoice_date <= end_date
@@ -404,6 +501,7 @@ def advanced_report(
             func.sum(models.Invoice.total_amount).label("amount")
         )
         .filter(
+            models.Invoice.user_id == current_user.id,
             models.Invoice.invoice_date >= start_date,
             models.Invoice.invoice_date <= end_date
         )
@@ -439,6 +537,7 @@ def advanced_report(
 @app.get("/reports/trend")
 def trend_report(
     months: int = 6,
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Son N ay gelir-gider trendi"""
@@ -460,6 +559,7 @@ def trend_report(
         income = (
             db.query(func.sum(models.Invoice.total_amount))
             .filter(
+                models.Invoice.user_id == current_user.id,
                 models.Invoice.category == "Gelir",
                 models.Invoice.invoice_date >= month_start,
                 models.Invoice.invoice_date <= month_end
@@ -471,6 +571,7 @@ def trend_report(
         expense = (
             db.query(func.sum(models.Invoice.total_amount))
             .filter(
+                models.Invoice.user_id == current_user.id,
                 models.Invoice.category == "Gider",
                 models.Invoice.invoice_date >= month_start,
                 models.Invoice.invoice_date <= month_end
@@ -494,6 +595,7 @@ def trend_report(
 @app.get("/reports/category-distribution")
 def category_distribution(
     period: str = "monthly",
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Giderlerin kategori bazında dağılımı"""
@@ -515,6 +617,7 @@ def category_distribution(
             func.sum(models.Invoice.total_amount).label("amount")
         )
         .filter(
+            models.Invoice.user_id == current_user.id,
             models.Invoice.invoice_date >= start_date,
             models.Invoice.invoice_date <= end_date
         )
