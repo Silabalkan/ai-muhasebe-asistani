@@ -13,7 +13,7 @@ from datetime import date, timedelta, datetime
 
 # Yerel modüller
 import models
-from db import Base, engine, get_db
+from db import Base, engine, get_db, ensure_schema_compatibility
 from crud import (
     create_invoice,
     list_invoices,
@@ -61,6 +61,7 @@ app.add_middleware(
 # DB OLUŞTUR
 # =========================
 Base.metadata.create_all(bind=engine)
+ensure_schema_compatibility()
 
 # =========================
 # TARİH GÜVENLİ PARSE
@@ -123,7 +124,9 @@ def register(
     )
     
     # Token oluştur
-    access_token = create_access_token(data={"sub": str(user.id)})
+    access_token = create_access_token(
+        data={"sub": str(user.id), "role": user.role}
+    )
     
     return {
         "access_token": access_token,
@@ -149,7 +152,9 @@ def login(
         )
     
     # Token oluştur
-    access_token = create_access_token(data={"sub": str(user.id)})
+    access_token = create_access_token(
+        data={"sub": str(user.id), "role": user.role}
+    )
     
     return {
         "access_token": access_token,

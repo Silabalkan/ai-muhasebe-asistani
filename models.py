@@ -11,6 +11,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     username = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
+    role = Column(String(32), nullable=False, default="personel", server_default="personel")
     
     # Relasyon
     invoices = relationship("Invoice", back_populates="user")

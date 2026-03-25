@@ -105,3 +105,21 @@ async def get_current_user(
             detail="User not found"
         )
     return user
+
+
+def require_roles(*allowed_roles: str):
+    """RBAC helper for future role-protected endpoints."""
+    normalized_roles = {role.lower().strip() for role in allowed_roles if role}
+
+    async def _role_guard(
+        current_user: models.User = Depends(get_current_user),
+    ) -> models.User:
+        user_role = (current_user.role or "personel").lower().strip()
+        if normalized_roles and user_role not in normalized_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bu işlem için yetkiniz yok"
+            )
+        return current_user
+
+    return _role_guard
