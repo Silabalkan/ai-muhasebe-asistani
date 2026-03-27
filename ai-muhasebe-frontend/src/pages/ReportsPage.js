@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BarChart,
   Bar,
   LineChart,
   Line,
+  AreaChart,
+  Area,
   PieChart,
   Pie,
   Cell,
@@ -18,43 +20,99 @@ import {
   getAdvancedReport,
   getTrendReport,
   getCategoryDistribution,
+  getForecastReport,
 } from "../api";
 
 export default function ReportsPage() {
+  const todayStr = new Date().toISOString().slice(0, 10);
   const [period, setPeriod] = useState("monthly");
+  const [forecastModel, setForecastModel] = useState("auto");
   const [customDateRange, setCustomDateRange] = useState({
     startDate: "",
     endDate: "",
   });
-  const [showCustomRange, setShowCustomRange] = useState(false);
   const [advancedData, setAdvancedData] = useState(null);
   const [trendData, setTrendData] = useState(null);
   const [categoryData, setCategoryData] = useState(null);
+  const [forecastData, setForecastData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadAllReports();
-  }, [period]);
-
-  const loadAllReports = async () => {
+  const loadAllReports = useCallback(async () => {
     try {
+      if (
+        period === "custom" &&
+        (!customDateRange.startDate || !customDateRange.endDate)
+      ) {
+        return;
+      }
+
       setLoading(true);
-      const [advanced, trend, category] = await Promise.all([
-        getAdvancedReport({ period }),
-        getTrendReport({ months: 6 }),
-        getCategoryDistribution({ period }),
+      const historyMonthsByPeriod = {
+        weekly: 6,
+        monthly: 12,
+        yearly: 24,
+      };
+      const historyMonths = historyMonthsByPeriod[period] || 12;
+
+      const isCustom =
+        period === "custom" &&
+        customDateRange.startDate &&
+        customDateRange.endDate;
+
+      const advancedParams = isCustom
+        ? {
+            period,
+            start_date: customDateRange.startDate,
+            end_date: customDateRange.endDate,
+          }
+        : { period };
+
+      const trendParams = isCustom
+        ? {
+            start_date: customDateRange.startDate,
+            end_date: customDateRange.endDate,
+          }
+        : { months: 6 };
+
+      const forecastParams = isCustom
+        ? {
+            forecast_months: 3,
+            forecast_model: forecastModel,
+            start_date: customDateRange.startDate,
+            end_date: customDateRange.endDate,
+          }
+        : {
+            history_months: historyMonths,
+            forecast_months: 3,
+            forecast_model: forecastModel,
+          };
+
+      const [advanced, trend, category, forecast] = await Promise.all([
+        getAdvancedReport(advancedParams),
+        getTrendReport(trendParams),
+        getCategoryDistribution(advancedParams),
+        getForecastReport(forecastParams),
       ]);
 
       setAdvancedData(advanced.data);
       setTrendData(trend.data.trend);
       setCategoryData(category.data.categories);
+      setForecastData(forecast.data);
     } catch (err) {
       console.error(err);
-      alert("Rapor yüklenirken hata oluştu");
+      const detail = err?.response?.data?.detail;
+      alert(detail ? `Rapor yuklenirken hata olustu: ${detail}` : "Rapor yuklenirken hata olustu");
     } finally {
       setLoading(false);
     }
-  };
+  }, [period, customDateRange.startDate, customDateRange.endDate, forecastModel]);
+
+  useEffect(() => {
+    if (period === "custom") {
+      return;
+    }
+    loadAllReports();
+  }, [period, forecastModel, loadAllReports]);
 
   // PASTA GRAFİĞİ VERİSİ
   const pieData = advancedData
@@ -70,6 +128,110 @@ export default function ReportsPage() {
       ]
     : [];
 
+  const nextMonthForecast = forecastData?.forecast?.[0] || null;
+  const forecastQuality = forecastData?.quality || null;
+
+  const confidenceLabels = {
+    high: "Yuksek",
+    medium: "Orta",
+    low: "Dusuk",
+    unknown: "Yetersiz Veri",
+  };
+
+  const forecastChartData = useMemo(() => {
+    if (!forecastData) return [];
+
+    const history = (forecastData.history || []).map((item) => ({
+      month: item.month,
+      income_actual: item.income,
+      expense_actual: item.expense,
+      income_forecast: null,
+      expense_forecast: null,
+      income_lower: null,
+      income_upper: null,
+      expense_lower: null,
+      expense_upper: null,
+    }));
+
+    const forecast = (forecastData.forecast || []).map((item) => ({
+      month: item.month,
+      income_actual: null,
+      expense_actual: null,
+      income_forecast: item.income,
+      expense_forecast: item.expense,
+      income_lower: item.income_lower,
+      income_upper: item.income_upper,
+      expense_lower: item.expense_lower,
+      expense_upper: item.expense_upper,
+    }));
+
+    return [...history, ...forecast];
+  }, [forecastData]);
+
+  const historyOnlyChartData = useMemo(() => {
+    return forecastChartData.filter(
+      (row) => row.income_actual != null || row.expense_actual != null
+    );
+  }, [forecastChartData]);
+
+  const forecastOnlyChartData = useMemo(() => {
+    return forecastChartData.filter(
+      (row) => row.income_forecast != null || row.expense_forecast != null
+    );
+  }, [forecastChartData]);
+
+  const getTightDomain = (data, keys) => {
+    const values = [];
+    data.forEach((row) => {
+      keys.forEach((key) => {
+        const v = row[key];
+        if (v != null && Number.isFinite(Number(v))) {
+          values.push(Number(v));
+        }
+      });
+    });
+
+    if (!values.length) return [0, 100];
+
+    const minVal = Math.min(...values);
+    const maxVal = Math.max(...values);
+
+    if (minVal === maxVal) {
+      const pad = Math.max(50, maxVal * 0.2 || 50);
+      return [Math.max(0, minVal - pad), maxVal + pad];
+    }
+
+    const spread = maxVal - minVal;
+    const pad = Math.max(20, spread * 0.15);
+    return [Math.max(0, minVal - pad), maxVal + pad];
+  };
+
+  const historyDomain = useMemo(
+    () => getTightDomain(historyOnlyChartData, ["income_actual", "expense_actual"]),
+    [historyOnlyChartData]
+  );
+
+  const forecastDomain = useMemo(
+    () =>
+      getTightDomain(forecastOnlyChartData, [
+        "income_forecast",
+        "expense_forecast",
+        "income_lower",
+        "income_upper",
+        "expense_lower",
+        "expense_upper",
+      ]),
+    [forecastOnlyChartData]
+  );
+
+  const currencyTick = (value) => {
+    const n = Number(value || 0);
+    if (Math.abs(n) >= 10000) {
+      return `${(n / 1000).toFixed(1)}K₺`;
+    }
+    return `${n.toLocaleString("tr-TR", { maximumFractionDigits: 0 })}₺`;
+  };
+
   return (
     <>
       {/* BAŞLIK */}
@@ -83,9 +245,6 @@ export default function ReportsPage() {
             value={period}
             onChange={(e) => {
               setPeriod(e.target.value);
-              if (e.target.value !== "custom") {
-                setShowCustomRange(false);
-              }
             }}
           >
             <option value="weekly">📅 Bu Hafta</option>
@@ -94,12 +253,26 @@ export default function ReportsPage() {
             <option value="custom">📆 Özel Tarih Aralığı</option>
           </select>
 
+          <label>🧠 Tahmin Modeli:</label>
+          <select
+            value={forecastModel}
+            onChange={(e) => {
+              setForecastModel(e.target.value);
+            }}
+          >
+            <option value="auto">⚙️ Otomatik</option>
+            <option value="prophet">🔮 Prophet</option>
+            <option value="arima">📉 ARIMA</option>
+            <option value="linear">📏 Lineer</option>
+          </select>
+
           {/* ÖZEL TARİH ARAŞTIRMASI */}
           {period === "custom" && (
             <div className="custom-date-range">
               <input
                 type="date"
                 value={customDateRange.startDate}
+                max={todayStr}
                 onChange={(e) =>
                   setCustomDateRange({
                     ...customDateRange,
@@ -112,6 +285,7 @@ export default function ReportsPage() {
               <input
                 type="date"
                 value={customDateRange.endDate}
+                max={todayStr}
                 onChange={(e) =>
                   setCustomDateRange({
                     ...customDateRange,
@@ -331,7 +505,233 @@ export default function ReportsPage() {
                 </ResponsiveContainer>
               </section>
             )}
+
+            {/* TAHMİN GRAFİKLERİ */}
+            {forecastData && forecastChartData.length > 0 && (
+              <>
+                <section className="card">
+                  <h3>📈 Geçmiş Trend</h3>
+                  <ResponsiveContainer width="100%" height={400}>
+                      <LineChart data={historyOnlyChartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" interval="preserveStartEnd" minTickGap={16} />
+                        <YAxis tickFormatter={currencyTick} width={70} domain={historyDomain} />
+                        <Tooltip
+                          formatter={(value) => {
+                            if (value == null) return "-";
+                            return (
+                              Number(value).toLocaleString("tr-TR", {
+                                maximumFractionDigits: 2,
+                              }) + " ₺"
+                            );
+                          }}
+                        />
+                        <Legend />
+                        <Line
+                          type="monotone"
+                          dataKey="income_actual"
+                          stroke="#10b981"
+                          strokeWidth={2.5}
+                          dot={false}
+                          activeDot={{ r: 4 }}
+                          name="Gelir"
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="expense_actual"
+                          stroke="#ef4444"
+                          strokeWidth={2.5}
+                          dot={false}
+                          activeDot={{ r: 4 }}
+                          name="Gider"
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                </section>
+
+                <section className="card">
+                  <h4>Gelecek Tahmini</h4>
+                  <ResponsiveContainer width="100%" height={400}>
+                      <AreaChart data={forecastOnlyChartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" interval="preserveStartEnd" minTickGap={16} />
+                        <YAxis tickFormatter={currencyTick} width={70} domain={forecastDomain} />
+                        <Tooltip
+                          formatter={(value) => {
+                            if (value == null) return "-";
+                            return (
+                              Number(value).toLocaleString("tr-TR", {
+                                maximumFractionDigits: 2,
+                              }) + " ₺"
+                            );
+                          }}
+                        />
+                        <Legend />
+
+                        <Area
+                          type="monotone"
+                          dataKey="income_upper"
+                          stroke="none"
+                          fill="rgba(16, 185, 129, 0.12)"
+                          legendType="none"
+                          name=""
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="income_lower"
+                          stroke="none"
+                          fill="#fff"
+                          stackId="income-band"
+                          legendType="none"
+                          name=""
+                        />
+
+                        <Area
+                          type="monotone"
+                          dataKey="expense_upper"
+                          stroke="none"
+                          fill="rgba(239, 68, 68, 0.12)"
+                          legendType="none"
+                          name=""
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="expense_lower"
+                          stroke="none"
+                          fill="#fff"
+                          stackId="expense-band"
+                          legendType="none"
+                          name=""
+                        />
+
+                        <Line
+                          type="monotone"
+                          dataKey="income_forecast"
+                          stroke="#10b981"
+                          strokeWidth={2.5}
+                          strokeDasharray="6 4"
+                          dot={{ r: 2 }}
+                          activeDot={{ r: 5 }}
+                          name="Gelir Tahmin"
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="expense_forecast"
+                          stroke="#ef4444"
+                          strokeWidth={2.5}
+                          strokeDasharray="6 4"
+                          dot={{ r: 2 }}
+                          activeDot={{ r: 5 }}
+                          name="Gider Tahmin"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                </section>
+              </>
+            )}
           </div>
+
+          {/* GELECEK AY ÖZETİ */}
+          {nextMonthForecast && (
+            <section className="card">
+              <h3>🗓️ Gelecek Ay Tahmini</h3>
+              <div className="forecast-next-grid">
+                <div className="summary-item income-item">
+                  <div className="summary-icon">💰</div>
+                  <div className="summary-text">
+                    <span className="summary-label">Tahmini Gelir</span>
+                    <span className="summary-amount">
+                      {nextMonthForecast.income.toLocaleString("tr-TR", {
+                        maximumFractionDigits: 2,
+                      })} ₺
+                    </span>
+                  </div>
+                </div>
+
+                <div className="summary-item expense-item">
+                  <div className="summary-icon">💸</div>
+                  <div className="summary-text">
+                    <span className="summary-label">Tahmini Gider</span>
+                    <span className="summary-amount">
+                      {nextMonthForecast.expense.toLocaleString("tr-TR", {
+                        maximumFractionDigits: 2,
+                      })} ₺
+                    </span>
+                  </div>
+                </div>
+
+                <div className="summary-item net-item">
+                  <div className="summary-icon">📊</div>
+                  <div className="summary-text">
+                    <span className="summary-label">Tahmini Net</span>
+                    <span
+                      className={`summary-amount ${
+                        nextMonthForecast.net >= 0 ? "positive" : "negative"
+                      }`}
+                    >
+                      {nextMonthForecast.net.toLocaleString("tr-TR", {
+                        maximumFractionDigits: 2,
+                      })} ₺
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {forecastQuality && (
+            <section className="card">
+              <h3>🧪 Tahmin Kalite Ozeti</h3>
+              <div className="forecast-quality-grid">
+                <div className="kpi-card">
+                  <div className="kpi-icon">🎯</div>
+                  <div className="kpi-content">
+                    <h4>Guven Seviyesi</h4>
+                    <p className="kpi-value">
+                      {confidenceLabels[forecastQuality.confidence_level] || "Yetersiz Veri"}
+                    </p>
+                    <span className="kpi-label">
+                      Holdout: {forecastQuality.holdout_months || 0} ay
+                    </span>
+                  </div>
+                </div>
+
+                <div className="kpi-card">
+                  <div className="kpi-icon">📉</div>
+                  <div className="kpi-content">
+                    <h4>Gelir WAPE</h4>
+                    <p className="kpi-value">
+                      {forecastQuality.income_wape != null
+                        ? `${forecastQuality.income_wape.toFixed(1)}%`
+                        : "-"}
+                    </p>
+                    <span className="kpi-label">
+                      MAPE: {forecastQuality.income_mape != null
+                        ? `${forecastQuality.income_mape.toFixed(1)}%`
+                        : "-"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="kpi-card">
+                  <div className="kpi-icon">📈</div>
+                  <div className="kpi-content">
+                    <h4>Gider WAPE</h4>
+                    <p className="kpi-value">
+                      {forecastQuality.expense_wape != null
+                        ? `${forecastQuality.expense_wape.toFixed(1)}%`
+                        : "-"}
+                    </p>
+                    <span className="kpi-label">
+                      MAPE: {forecastQuality.expense_mape != null
+                        ? `${forecastQuality.expense_mape.toFixed(1)}%`
+                        : "-"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* KATEGORİ DAĞILIM */}
           {categoryData && categoryData.length > 0 && (

@@ -83,3 +83,50 @@ class ManualIncomeCreate(BaseModel):
         if isinstance(v, str):
             return datetime.strptime(v, "%Y-%m-%d").date()
         return v
+
+
+class MonthlyAggregatePoint(BaseModel):
+    month: str
+    income: float
+    expense: float
+    net: float
+
+
+class MonthlyAggregateResponse(BaseModel):
+    months: int
+    start_month: str
+    end_month: str
+    points: list[MonthlyAggregatePoint]
+
+
+class ForecastPoint(BaseModel):
+    month: str
+    income: float
+    expense: float
+    net: float
+    income_lower: float | None = None
+    income_upper: float | None = None
+    expense_lower: float | None = None
+    expense_upper: float | None = None
+
+
+class ForecastQuality(BaseModel):
+    holdout_months: int
+    income_mape: float | None = None
+    expense_mape: float | None = None
+    income_wape: float | None = None
+    expense_wape: float | None = None
+    confidence_level: str
+
+
+class ForecastResponse(BaseModel):
+    model_used: str
+    model_version: str
+    trained_at: str
+    history_months: int
+    forecast_months: int
+    history_start_month: str
+    history_end_month: str
+    quality: ForecastQuality
+    history: list[MonthlyAggregatePoint]
+    forecast: list[ForecastPoint]

@@ -109,6 +109,10 @@ export const getCategoryDistribution = (params) => {
   return API.get("/reports/category-distribution", { params });
 };
 
+export const getForecastReport = (params) => {
+  return API.get("/reports/forecast", { params });
+};
+
 export const addManualIncome = (payload) => {
   return API.post("/invoices/manual-income", payload);
 };

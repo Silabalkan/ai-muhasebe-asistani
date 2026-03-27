@@ -2,9 +2,13 @@ fastapi
 uvicorn
 sqlalchemy
 pydantic
+python-multipart
 tesseract
 transformers
 pillow
 python-dotenv
 python-jose[cryptography]
 passlib[bcrypt]
+pandas
+prophet
+statsmodels
