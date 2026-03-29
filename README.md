@@ -1,70 +1,47 @@
-# AI-Based Accounting Assistant
+# AI Muhasebe Asistani
 
-An AI-integrated financial automation system designed for small and medium-sized enterprises (SMEs).
+KOBI odakli bir gelir-gider takip ve raporlama uygulamasi.
+Backend FastAPI ile, frontend React ile gelistirilmistir.
 
-This project enables users to upload invoices and receipts, automatically extract text using OCR, classify financial transactions using NLP models, and generate structured income–expense reports.
+## Ozellikler
 
----
+- Fis/fatura gorseli yukleme
+- OCR ile metin cikarma (Tesseract + pytesseract)
+- Regex tabanli fatura alani ayrisimi (tarih, tutar, KDV, odeme tipi, satici)
+- Gelir ve gider kaydi (otomatik OCR + manuel gelir)
+- KPI, trend, kategori dagilimi ve odeme tipi raporlari
+- Zaman serisi tahmini (auto: Prophet/ARIMA/Linear fallback)
 
-## 🚀 Features
+## Mimari Ozeti
 
-- Invoice & receipt upload
-- OCR-based text extraction (Tesseract)
-- NLP-based financial category classification (BERTurk)
-- Automated income–expense reporting
-- RESTful API architecture (FastAPI)
-- PostgreSQL / SQLite database integration
-- Modular backend architecture
-- Frontend integration for visualization
+- Backend API: FastAPI ([main.py](main.py))
+- Veri erisimi: SQLAlchemy + SQLite ([db.py](db.py), [models.py](models.py))
+- Kimlik dogrulama: JWT + sifre hash ([auth.py](auth.py))
+- Is katmani/CRUD: [crud.py](crud.py)
+- OCR/NLP yardimcilari: [nlp_utils.py](nlp_utils.py)
+- Frontend: React ([ai-muhasebe-frontend/src](ai-muhasebe-frontend/src))
 
----
+## Teknoloji Yigini
 
-## 🏗 Architecture Overview
+- Python, FastAPI, SQLAlchemy, Pydantic
+- SQLite (varsayilan)
+- Tesseract OCR + pytesseract
+- Prophet, statsmodels, pandas (tahmin icin)
+- React, axios, recharts
 
-The system follows a layered backend architecture:
+## Calistirma
 
-- **API Layer** – FastAPI endpoints
-- **Service Layer** – Business logic & processing
-- **OCR Layer** – Image preprocessing & text extraction
-- **NLP Layer** – Financial category classification
-- **Database Layer** – Structured data persistence
-
----
-
-## 🛠 Tech Stack
-
-**Backend**
-- Python
-- FastAPI
-- PostgreSQL / SQLite
-- SQLAlchemy
-
-**AI & Data Processing**
-- Tesseract OCR
-- Transformers (BERTurk)
-- Image preprocessing techniques
-
-**Frontend**
-- React.js
-
-**DevOps**
-- Docker (Containerized backend environment)
-
----
-
-## ⚙️ Running the Project
+### Backend
 
 ```bash
-# Clone repository
-git clone https://github.com/yourusername/ai-muhasebe-asistani.git
-
-# Install backend dependencies
 pip install -r requirements.txt
-
-# Run backend
 uvicorn main:app --reload
+```
 
-Frontend:
+### Frontend
+
+```bash
 cd ai-muhasebe-frontend
 npm install
 npm start
+```

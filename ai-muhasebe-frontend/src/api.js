@@ -113,6 +113,10 @@ export const getForecastReport = (params) => {
   return API.get("/reports/forecast", { params });
 };
 
+export const getExpenseAnomaly = (params) => {
+  return API.get("/reports/anomaly-expense", { params });
+};
+
 export const addManualIncome = (payload) => {
   return API.post("/invoices/manual-income", payload);
 };

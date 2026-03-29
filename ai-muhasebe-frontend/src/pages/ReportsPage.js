@@ -15,18 +15,22 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  ReferenceLine,
 } from "recharts";
 import {
   getAdvancedReport,
   getTrendReport,
   getCategoryDistribution,
   getForecastReport,
+  getExpenseAnomaly,
 } from "../api";
 
 export default function ReportsPage() {
   const todayStr = new Date().toISOString().slice(0, 10);
   const [period, setPeriod] = useState("monthly");
   const [forecastModel, setForecastModel] = useState("auto");
+  const [anomalyThreshold, setAnomalyThreshold] = useState(1.3);
+  const [anomalyMethod, setAnomalyMethod] = useState("average");
   const [customDateRange, setCustomDateRange] = useState({
     startDate: "",
     endDate: "",
@@ -35,6 +39,7 @@ export default function ReportsPage() {
   const [trendData, setTrendData] = useState(null);
   const [categoryData, setCategoryData] = useState(null);
   const [forecastData, setForecastData] = useState(null);
+  const [anomalyData, setAnomalyData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const loadAllReports = useCallback(async () => {
@@ -87,17 +92,37 @@ export default function ReportsPage() {
             forecast_model: forecastModel,
           };
 
-      const [advanced, trend, category, forecast] = await Promise.all([
+      let anomalyWindowMonths = historyMonths;
+      if (isCustom) {
+        const start = new Date(customDateRange.startDate);
+        const end = new Date(customDateRange.endDate);
+        const monthDiff =
+          (end.getFullYear() - start.getFullYear()) * 12 +
+          (end.getMonth() - start.getMonth()) +
+          1;
+        anomalyWindowMonths = monthDiff;
+      }
+      anomalyWindowMonths = Math.max(3, Math.min(60, anomalyWindowMonths));
+
+      const anomalyParams = {
+        window_months: anomalyWindowMonths,
+        threshold_ratio: anomalyThreshold,
+        baseline_method: anomalyMethod,
+      };
+
+      const [advanced, trend, category, forecast, anomaly] = await Promise.all([
         getAdvancedReport(advancedParams),
         getTrendReport(trendParams),
         getCategoryDistribution(advancedParams),
         getForecastReport(forecastParams),
+        getExpenseAnomaly(anomalyParams),
       ]);
 
       setAdvancedData(advanced.data);
       setTrendData(trend.data.trend);
       setCategoryData(category.data.categories);
       setForecastData(forecast.data);
+      setAnomalyData(anomaly.data);
     } catch (err) {
       console.error(err);
       const detail = err?.response?.data?.detail;
@@ -105,14 +130,21 @@ export default function ReportsPage() {
     } finally {
       setLoading(false);
     }
-  }, [period, customDateRange.startDate, customDateRange.endDate, forecastModel]);
+  }, [
+    period,
+    customDateRange.startDate,
+    customDateRange.endDate,
+    forecastModel,
+    anomalyThreshold,
+    anomalyMethod,
+  ]);
 
   useEffect(() => {
     if (period === "custom") {
       return;
     }
     loadAllReports();
-  }, [period, forecastModel, loadAllReports]);
+  }, [period, forecastModel, anomalyThreshold, anomalyMethod, loadAllReports]);
 
   // PASTA GRAFİĞİ VERİSİ
   const pieData = advancedData
@@ -167,6 +199,16 @@ export default function ReportsPage() {
 
     return [...history, ...forecast];
   }, [forecastData]);
+
+  const anomalyChartData = useMemo(() => {
+    if (!anomalyData?.series || !Array.isArray(anomalyData.series)) return [];
+    return anomalyData.series.map((item) => ({
+      month: item.month,
+      expense: Number(item.expense || 0),
+      threshold: Number(anomalyData?.anomaly?.threshold_value || 0),
+      baseline: Number(anomalyData?.anomaly?.baseline_value || 0),
+    }));
+  }, [anomalyData]);
 
   const historyOnlyChartData = useMemo(() => {
     return forecastChartData.filter(
@@ -264,6 +306,25 @@ export default function ReportsPage() {
             <option value="prophet">🔮 Prophet</option>
             <option value="arima">📉 ARIMA</option>
             <option value="linear">📏 Lineer</option>
+          </select>
+
+          <label>🚨 Anomali Esigi:</label>
+          <select
+            value={anomalyThreshold}
+            onChange={(e) => setAnomalyThreshold(Number(e.target.value))}
+          >
+            <option value={1.2}>%20 Ustu</option>
+            <option value={1.3}>%30 Ustu</option>
+            <option value={1.4}>%40 Ustu</option>
+          </select>
+
+          <label>🧪 Anomali Yontemi:</label>
+          <select
+            value={anomalyMethod}
+            onChange={(e) => setAnomalyMethod(e.target.value)}
+          >
+            <option value="average">Ortalama (Basit)</option>
+            <option value="median_mad">Medyan+MAD (Daha Guvenli)</option>
           </select>
 
           {/* ÖZEL TARİH ARAŞTIRMASI */}
@@ -419,6 +480,163 @@ export default function ReportsPage() {
                   </div>
                 </div>
               </div>
+            </section>
+          )}
+
+          {anomalyData && (
+            <section
+              className={`card ${
+                anomalyData.anomaly?.is_anomaly
+                  ? "warning-card"
+                  : ""
+              }`}
+            >
+              <h3>🚨 Gider Anomali Kontrolu</h3>
+              <p className="upload-desc" style={{ marginTop: 6 }}>
+                Son ay gideri, secilen pencere icindeki gecmis gider seviyesine gore degerlendirildi.
+              </p>
+
+              {anomalyData.anomaly?.status === "insufficient_data" ||
+              anomalyData.anomaly?.status === "insufficient_baseline" ? (
+                <div className="alert alert-info">
+                  <span className="alert-icon">ℹ️</span>
+                  <span>{anomalyData.anomaly.message}</span>
+                </div>
+              ) : anomalyData.anomaly?.is_anomaly ? (
+                <div className="alert alert-danger">
+                  <span className="alert-icon">⚠️</span>
+                  <span>{anomalyData.anomaly.message}</span>
+                </div>
+              ) : (
+                <div className="alert alert-success">
+                  <span className="alert-icon">✅</span>
+                  <span>{anomalyData.anomaly?.message}</span>
+                </div>
+              )}
+
+              {anomalyData.anomaly?.status === "ok" && (
+                <div className="kpi-grid" style={{ marginTop: 12 }}>
+                  <div className="kpi-card">
+                    <div className="kpi-icon">📌</div>
+                    <div className="kpi-content">
+                      <h4>Referans Seviye</h4>
+                      <p className="kpi-value">
+                        {anomalyData.anomaly.baseline_value != null
+                          ? `${Number(anomalyData.anomaly.baseline_value).toLocaleString("tr-TR", {
+                              maximumFractionDigits: 2,
+                            })} ₺`
+                          : "Veri yetersiz"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="kpi-card">
+                    <div className="kpi-icon">🧾</div>
+                    <div className="kpi-content">
+                      <h4>Son Ay Gideri</h4>
+                      <p className="kpi-value expense">
+                        {Number(anomalyData.anomaly.latest_expense || 0).toLocaleString("tr-TR", {
+                          maximumFractionDigits: 2,
+                        })} ₺
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="kpi-card">
+                    <div className="kpi-icon">🎯</div>
+                    <div className="kpi-content">
+                      <h4>Anomali Esigi</h4>
+                      <p className="kpi-value">
+                        {anomalyData.anomaly.threshold_value != null
+                          ? `${Number(anomalyData.anomaly.threshold_value).toLocaleString("tr-TR", {
+                              maximumFractionDigits: 2,
+                            })} ₺`
+                          : "Veri yetersiz"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {anomalyData.anomaly?.status === "ok" && (
+                <div style={{ marginTop: 12 }}>
+                  <p className="kpi-label" style={{ marginBottom: 6 }}>
+                    Yontem: {anomalyData.anomaly.method_used === "median_mad" ? "Medyan+MAD" : "Ortalama"}
+                  </p>
+                  <p className="kpi-label" style={{ marginBottom: 6 }}>
+                    Esik asim yuzdesi: {anomalyData.anomaly.exceed_percent != null && anomalyData.anomaly.exceed_percent > 0
+                      ? `${anomalyData.anomaly.exceed_percent.toFixed(1)}%`
+                      : "-"}
+                  </p>
+                </div>
+              )}
+
+              {anomalyData.anomaly?.status === "ok" && anomalyChartData.length > 0 && (
+                <div style={{ marginTop: 14 }}>
+                  <ResponsiveContainer width="100%" height={240}>
+                    <BarChart data={anomalyChartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis tickFormatter={currencyTick} width={70} />
+                      <Tooltip
+                        formatter={(value) =>
+                          Number(value).toLocaleString("tr-TR", {
+                            maximumFractionDigits: 2,
+                          }) + " ₺"
+                        }
+                      />
+                      <Legend />
+                      <ReferenceLine y={Number(anomalyData.anomaly.baseline_value || 0)} stroke="#2563eb" strokeDasharray="5 5" label="Referans" />
+                      <ReferenceLine y={Number(anomalyData.anomaly.threshold_value || 0)} stroke="#dc2626" strokeDasharray="4 4" label="Esik" />
+                      <Bar dataKey="expense" fill="#f97316" name="Aylik Gider" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              {Array.isArray(anomalyData.drivers) && anomalyData.drivers.length > 0 && (
+                <div style={{ marginTop: 14 }}>
+                  <h4 style={{ marginBottom: 8 }}>Artisa en cok etki eden saticilar</h4>
+                  <div className="table-wrapper">
+                    <table className="invoice-table">
+                      <thead>
+                        <tr>
+                          <th>Satici</th>
+                          <th>Bu Ay</th>
+                          <th>Gecmis Ort.</th>
+                          <th>Fark</th>
+                          <th>Pay</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {anomalyData.drivers.map((item, idx) => (
+                          <tr key={`${item.name}-${idx}`}>
+                            <td>{item.name}</td>
+                            <td>{Number(item.latest_amount || 0).toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺</td>
+                            <td>{Number(item.historical_avg || 0).toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺</td>
+                            <td className={item.delta_amount >= 0 ? "income" : "expense"}>
+                              {item.delta_amount >= 0 ? "+" : ""}
+                              {Number(item.delta_amount || 0).toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺
+                            </td>
+                            <td>%{Number(item.share_of_latest || 0).toFixed(1)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {Array.isArray(anomalyData.anomaly?.recommendations) && anomalyData.anomaly.recommendations.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <h4 style={{ marginBottom: 8 }}>Oneri</h4>
+                  {anomalyData.anomaly.recommendations.map((item, idx) => (
+                    <p key={idx} className="kpi-label" style={{ marginBottom: 6 }}>
+                      {idx + 1}. {item}
+                    </p>
+                  ))}
+                </div>
+              )}
             </section>
           )}
 

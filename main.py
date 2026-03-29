@@ -13,6 +13,7 @@ from datetime import date, timedelta, datetime
 import math
 import importlib
 import warnings
+from statistics import median
 
 # Yerel modüller
 import models
@@ -444,6 +445,208 @@ def run_backtest(month_keys: list[str], values: list[float], model_name: str):
         "wape": wape,
     }
 
+
+def detect_latest_expense_anomaly(
+    monthly_points: list[dict],
+    threshold_ratio: float,
+    baseline_method: str,
+):
+    """Detect whether the latest monthly expense is anomalous vs historical baseline."""
+    if len(monthly_points) < 3:
+        return {
+            "status": "insufficient_data",
+            "is_anomaly": False,
+            "severity": "none",
+            "message": "Anomali analizi icin en az 3 aylik veri gerekiyor.",
+            "method_used": baseline_method,
+            "baseline_value": None,
+            "latest_expense": None,
+            "threshold_value": None,
+            "exceed_ratio": None,
+            "exceed_percent": None,
+            "recommendations": [
+                "Daha dogru anomali analizi icin duzenli gider girisi yapin.",
+                "En az 3 aylik veri birikmesini bekleyin.",
+            ],
+        }
+
+    historical_points = monthly_points[:-1]
+    latest_point = monthly_points[-1]
+
+    baseline_values = [float(p["expense"]) for p in historical_points]
+    latest_expense = float(latest_point["expense"])
+    non_zero_baseline_count = sum(1 for v in baseline_values if v > 0)
+
+    if non_zero_baseline_count < 2:
+        return {
+            "status": "insufficient_baseline",
+            "is_anomaly": False,
+            "severity": "none",
+            "message": "Gecmis gider verisi anomali icin yetersiz. Biraz daha veri birikmesini bekleyin.",
+            "method_used": baseline_method,
+            "baseline_value": None,
+            "latest_expense": latest_expense,
+            "threshold_value": None,
+            "exceed_ratio": None,
+            "exceed_percent": None,
+            "recommendations": [
+                "Anlamli analiz icin duzenli gider girisi yapin.",
+                "En az iki farkli ayda gider kaydi olmasi onerilir.",
+            ],
+        }
+
+    if baseline_method == "median_mad":
+        med = float(median(baseline_values))
+        deviations = [abs(v - med) for v in baseline_values]
+        mad = float(median(deviations)) if deviations else 0.0
+        robust_sigma = 1.4826 * mad
+        baseline_value = float(med + robust_sigma)
+    else:
+        baseline_value = float(sum(baseline_values) / len(baseline_values))
+
+    threshold_value = float(baseline_value * threshold_ratio)
+
+    if threshold_value <= 0:
+        return {
+            "status": "insufficient_baseline",
+            "is_anomaly": False,
+            "severity": "none",
+            "message": "Referans gider seviyesi olusmadi. Anomali sonucu icin daha fazla veri gerekli.",
+            "method_used": baseline_method,
+            "baseline_value": None,
+            "latest_expense": latest_expense,
+            "threshold_value": None,
+            "exceed_ratio": None,
+            "exceed_percent": None,
+            "recommendations": [
+                "Gider girislerini duzenli yaparak referans seviye olusmasini saglayin.",
+            ],
+        }
+    else:
+        is_anomaly = latest_expense > threshold_value
+        exceed_ratio = float(latest_expense / threshold_value)
+        exceed_percent = float((latest_expense - threshold_value) / threshold_value * 100)
+
+    if not is_anomaly:
+        severity = "none"
+        message = "Son gider degeri normal seviyede gorunuyor."
+        recommendations = [
+            "Gider dagilimini kategori bazinda aylik takip etmeye devam edin.",
+            "Mevcut esik degerini koruyabilir veya ihtiyaca gore ayarlayabilirsiniz.",
+        ]
+    else:
+        ratio = exceed_ratio or 1.0
+        if ratio < 1.15:
+            severity = "low"
+        elif ratio < 1.35:
+            severity = "medium"
+        else:
+            severity = "high"
+
+        message = (
+            "Bu ay giderleriniz normal seviyenin uzerinde. "
+            "Detaylari kontrol etmeniz onerilir."
+        )
+        recommendations = [
+            "Bu ay yukselen gider kalemlerini kategori ve satici bazinda inceleyin.",
+            "Tek seferlik harcama varsa not alin ve gelecek ay etkisini karsilastirin.",
+            "Gerekirse butce limiti veya uyarı esigini tekrar duzenleyin.",
+        ]
+
+    return {
+        "status": "ok",
+        "is_anomaly": bool(is_anomaly),
+        "severity": severity,
+        "message": message,
+        "method_used": baseline_method,
+        "baseline_value": baseline_value,
+        "latest_expense": latest_expense,
+        "threshold_value": threshold_value,
+        "exceed_ratio": exceed_ratio,
+        "exceed_percent": exceed_percent,
+        "recommendations": recommendations,
+    }
+
+
+def build_expense_spike_drivers(
+    db: Session,
+    user_id: int,
+    start_month: date,
+    end_month: date,
+):
+    """Return top vendors that explain latest month expense increase."""
+    latest_month_start = month_start(end_month)
+    latest_month_end = add_months(latest_month_start, 1) - timedelta(days=1)
+    history_month_start = month_start(start_month)
+    history_last_month_start = add_months(latest_month_start, -1)
+
+    if history_last_month_start < history_month_start:
+        return []
+
+    history_months = month_diff_inclusive(history_month_start, history_last_month_start)
+    history_end = latest_month_start - timedelta(days=1)
+
+    latest_rows = (
+        db.query(
+            models.Invoice.vendor,
+            func.sum(models.Invoice.total_amount).label("amount"),
+        )
+        .filter(
+            models.Invoice.user_id == user_id,
+            models.Invoice.category == "Gider",
+            models.Invoice.invoice_date >= latest_month_start,
+            models.Invoice.invoice_date <= latest_month_end,
+            models.Invoice.total_amount.isnot(None),
+        )
+        .group_by(models.Invoice.vendor)
+        .all()
+    )
+
+    history_rows = (
+        db.query(
+            models.Invoice.vendor,
+            func.sum(models.Invoice.total_amount).label("amount"),
+        )
+        .filter(
+            models.Invoice.user_id == user_id,
+            models.Invoice.category == "Gider",
+            models.Invoice.invoice_date >= history_month_start,
+            models.Invoice.invoice_date <= history_end,
+            models.Invoice.total_amount.isnot(None),
+        )
+        .group_by(models.Invoice.vendor)
+        .all()
+    )
+
+    history_sum_map = {
+        (row.vendor or "Bilinmiyor"): float(row.amount or 0.0)
+        for row in history_rows
+    }
+
+    latest_total = sum(float(row.amount or 0.0) for row in latest_rows)
+    drivers = []
+    for row in latest_rows:
+        vendor_name = row.vendor or "Bilinmiyor"
+        latest_amount = float(row.amount or 0.0)
+        historical_avg = float(history_sum_map.get(vendor_name, 0.0) / history_months)
+        delta = float(latest_amount - historical_avg)
+        delta_percent = float((delta / historical_avg) * 100) if historical_avg > 0 else None
+        share_of_latest = float((latest_amount / latest_total) * 100) if latest_total > 0 else 0.0
+
+        drivers.append(
+            {
+                "name": vendor_name,
+                "latest_amount": latest_amount,
+                "historical_avg": historical_avg,
+                "delta_amount": delta,
+                "delta_percent": delta_percent,
+                "share_of_latest": share_of_latest,
+            }
+        )
+
+    drivers.sort(key=lambda x: x["delta_amount"], reverse=True)
+    return drivers[:5]
+
 # =========================
 # HEALTH CHECK
 # =========================
@@ -723,24 +926,20 @@ def quick_summary(
 # =========================
 # RAPOR ÖZETİ
 # =========================
+@app.get("/reports/summary")
 def summary_report(
     period: str = "monthly",
+    start_date: date | None = None,
+    end_date: date | None = None,
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    today = date.today()
-
-    if period == "weekly":
-        start_date = today - timedelta(days=7)
-    elif period == "yearly":
-        start_date = today.replace(month=1, day=1)
-    else:  # monthly
-        start_date = today.replace(day=1)
-
-    end_date = today
+    start_date, end_date = resolve_period_dates(period, start_date, end_date)
 
     income = (
         db.query(func.sum(models.Invoice.total_amount))
         .filter(
+            models.Invoice.user_id == current_user.id,
             models.Invoice.category == "Gelir",
             models.Invoice.invoice_date >= start_date,
             models.Invoice.invoice_date <= end_date
@@ -752,6 +951,7 @@ def summary_report(
     expense = (
         db.query(func.sum(models.Invoice.total_amount))
         .filter(
+            models.Invoice.user_id == current_user.id,
             models.Invoice.category == "Gider",
             models.Invoice.invoice_date >= start_date,
             models.Invoice.invoice_date <= end_date
@@ -1040,6 +1240,71 @@ def monthly_aggregates(
         "start_month": start_month.strftime("%Y-%m"),
         "end_month": current_month.strftime("%Y-%m"),
         "points": points,
+    }
+
+
+@app.get("/reports/anomaly-expense")
+def expense_anomaly_report(
+    window_months: int = 6,
+    threshold_ratio: float = 1.30,
+    baseline_method: str = "average",
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Detect monthly expense anomalies for the current user."""
+    if window_months < 3 or window_months > 60:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="window_months 3 ile 60 arasinda olmali"
+        )
+
+    if threshold_ratio < 1.05 or threshold_ratio > 3:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="threshold_ratio 1.05 ile 3 arasinda olmali"
+        )
+
+    baseline_method = (baseline_method or "average").strip().lower()
+    if baseline_method not in {"average", "median_mad"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="baseline_method average veya median_mad olmali"
+        )
+
+    start_month, end_month, points = build_monthly_aggregate_points(
+        db=db,
+        user_id=current_user.id,
+        months=window_months,
+    )
+
+    anomaly = detect_latest_expense_anomaly(
+        monthly_points=points,
+        threshold_ratio=threshold_ratio,
+        baseline_method=baseline_method,
+    )
+
+    drivers = build_expense_spike_drivers(
+        db=db,
+        user_id=current_user.id,
+        start_month=start_month,
+        end_month=end_month,
+    )
+
+    return {
+        "window_months": int(window_months),
+        "threshold_ratio": float(threshold_ratio),
+        "baseline_method": baseline_method,
+        "start_month": start_month.strftime("%Y-%m"),
+        "end_month": end_month.strftime("%Y-%m"),
+        "anomaly": anomaly,
+        "drivers": drivers,
+        "series": [
+            {
+                "month": p["month"],
+                "expense": float(p["expense"]),
+            }
+            for p in points
+        ],
     }
 
 

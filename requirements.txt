@@ -3,7 +3,7 @@ uvicorn
 sqlalchemy
 pydantic
 python-multipart
-tesseract
+pytesseract
 transformers
 pillow
 python-dotenv
