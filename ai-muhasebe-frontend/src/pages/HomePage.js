@@ -48,7 +48,7 @@ export default function HomePage() {
     <>
       {/* BİLGİLENDİRME */}
       <section className="card info-card">
-        <h3>ℹ️ Giden Satışlarınızı Kaydedin</h3>
+        <h3>Giden Satışlarınızı Kaydedin</h3>
         <p className="info-text">
           İşletmenizin giden satışlarını ve harcamalarını takip etmek için lütfen fiş veya faturalarınızı yükleyiniz. 
           AI sistem otomatik olarak muhasebe bilgilerinizi çıkarır ve kategorize eder. 
@@ -58,7 +58,7 @@ export default function HomePage() {
 
       {/* FİŞ YÜKLEME */}
       <section className="card upload-card">
-        <h2>📸 Fiş Analiz Et</h2>
+        <h2>Fiş Analiz Et</h2>
         <p className="upload-desc">
           Fiş veya fatura görselini yükleyin. AI sistem otomatik olarak muhasebe bilgilerini çıkarsın ve kategorize etsin.
         </p>
@@ -79,7 +79,7 @@ export default function HomePage() {
             }}
           />
           <button onClick={handleUpload} disabled={loading}>
-            {loading ? "⏳ Analiz ediliyor..." : "🚀 Analiz Et"}
+            {loading ? "Analiz ediliyor..." : "Analiz Et"}
           </button>
         </div>
 
@@ -96,12 +96,12 @@ export default function HomePage() {
           <h2>✨ Analiz Sonuçları</h2>
 
           {loading && (
-            <p className="empty-text">⏳ Fiş analiz ediliyor, lütfen bekleyin...</p>
+              <p className="empty-text">Fiş analiz ediliyor, lütfen bekleyin...</p>
           )}
 
           {result && (
             <>
-              <p className="success-text">✅ Fiş başarıyla analiz edildi ve kaydedildi</p>
+                <p className="success-text">Fiş başarıyla analiz edildi ve kaydedildi</p>
 
               <div className="result-layout">
                 {/* SOL: FİŞ GÖRSELİ */}
@@ -118,51 +118,51 @@ export default function HomePage() {
                 {/* SAĞ: ANALİZ BİLGİLERİ */}
                 <div className="result-grid">
                   <div className="result-row">
-                    <span className="label">💰 Tutar:</span>
+                    <span className="label">Tutar</span>
                     <span className="value highlight">{result.total_amount} ₺</span>
                   </div>
 
                   <div className="result-row">
-                    <span className="label">🏪 Kategorisi:</span>
+                    <span className="label">Kategori</span>
                     <span className="value">{result.category || "-"}</span>
                   </div>
 
                   <div className="result-row">
-                    <span className="label">💳 Ödeme Tipi:</span>
+                    <span className="label">Ödeme Tipi</span>
                     <span className="value">{result.payment_type || "-"}</span>
                   </div>
 
                   <div className="result-row">
-                    <span className="label">📅 Tarih:</span>
+                    <span className="label">Tarih</span>
                     <span className="value">{result.invoice_date || "-"}</span>
                   </div>
 
                   <div className="result-row">
-                    <span className="label">🧾 Satıcı:</span>
+                    <span className="label">Satıcı</span>
                     <span className="value">{result.vendor || "-"}</span>
                   </div>
 
                   <div className="result-row">
-                    <span className="label">📊 KDV Oranı:</span>
+                    <span className="label">KDV Oranı</span>
                     <span className="value">
                       {result.kdv_rate != null ? `%${result.kdv_rate}` : "-"}
                     </span>
                   </div>
 
                   <div className="result-row">
-                    <span className="label">📈 KDV Tutarı:</span>
+                    <span className="label">KDV Tutarı</span>
                     <span className="value">
                       {result.kdv_amount != null ? `${result.kdv_amount} ₺` : "-"}
                     </span>
                   </div>
 
                   <div className="result-row">
-                    <span className="label">📝 Dosya:</span>
+                    <span className="label">Dosya</span>
                     <span className="value small">{result.filename}</span>
                   </div>
 
                   <div className="result-row">
-                    <span className="label">⏱️ Kayıt Zamanı:</span>
+                    <span className="label">Kayıt Zamanı</span>
                     <span className="value small">
                       {new Date(result.created_at).toLocaleString("tr-TR")}
                     </span>
@@ -179,10 +179,10 @@ export default function HomePage() {
         <>
           {/* BUGÜNÜN ÖZETİ */}
           <section className="card">
-            <h3>📅 Bugün</h3>
+            <h3>Bugün</h3>
             <div className="quick-summary-grid">
               <div className="summary-item income-item">
-                <div className="summary-icon">💰</div>
+                <div className="summary-icon" aria-hidden="true"></div>
                 <div className="summary-text">
                   <span className="summary-label">Gelir</span>
                   <span className="summary-amount">
@@ -194,7 +194,7 @@ export default function HomePage() {
               </div>
 
               <div className="summary-item expense-item">
-                <div className="summary-icon">💸</div>
+                <div className="summary-icon" aria-hidden="true"></div>
                 <div className="summary-text">
                   <span className="summary-label">Gider</span>
                   <span className="summary-amount">
@@ -206,7 +206,7 @@ export default function HomePage() {
               </div>
 
               <div className="summary-item net-item">
-                <div className="summary-icon">📊</div>
+                <div className="summary-icon" aria-hidden="true"></div>
                 <div className="summary-text">
                   <span className="summary-label">Net</span>
                   <span
@@ -225,10 +225,10 @@ export default function HomePage() {
 
           {/* AYLIK ÖZET */}
           <section className="card">
-            <h3>📆 Bu Ay</h3>
+            <h3>Bu Ay</h3>
             <div className="quick-summary-grid">
               <div className="summary-item income-item">
-                <div className="summary-icon">💰</div>
+                <div className="summary-icon" aria-hidden="true"></div>
                 <div className="summary-text">
                   <span className="summary-label">Gelir</span>
                   <span className="summary-amount">
@@ -240,7 +240,7 @@ export default function HomePage() {
               </div>
 
               <div className="summary-item expense-item">
-                <div className="summary-icon">💸</div>
+                <div className="summary-icon" aria-hidden="true"></div>
                 <div className="summary-text">
                   <span className="summary-label">Gider</span>
                   <span className="summary-amount">
@@ -252,7 +252,7 @@ export default function HomePage() {
               </div>
 
               <div className="summary-item net-item">
-                <div className="summary-icon">📊</div>
+                <div className="summary-icon" aria-hidden="true"></div>
                 <div className="summary-text">
                   <span className="summary-label">Net</span>
                   <span
@@ -272,7 +272,7 @@ export default function HomePage() {
           {/* SON İŞLEMLER */}
           {summary.recent && summary.recent.length > 0 && (
             <section className="card">
-              <h3>⚡ Son İşlemler</h3>
+              <h3>Son İşlemler</h3>
               <div className="recent-transactions">
                 {summary.recent.map((transaction, idx) => (
                   <div key={idx} className="transaction-item">

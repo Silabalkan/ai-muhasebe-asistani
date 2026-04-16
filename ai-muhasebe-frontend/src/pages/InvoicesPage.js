@@ -32,12 +32,12 @@ export default function InvoicesPage() {
 
   return (
     <section className="card">
-      <h2>📋 Kayıtlı Fişler</h2>
+      <h2>Kayıtlı Fişler</h2>
 
-      {loading && <p className="empty-text">⏳ Yükleniyor...</p>}
+      {loading && <p className="empty-text">Yükleniyor...</p>}
 
       {!loading && invoices.length === 0 && (
-        <p className="empty-text">📭 Henüz kayıtlı fiş bulunmuyor.</p>
+        <p className="empty-text">Henüz kayıtlı fiş bulunmuyor.</p>
       )}
 
       {!loading && invoices.length > 0 && (
@@ -45,11 +45,11 @@ export default function InvoicesPage() {
           <table className="invoice-table">
             <thead>
               <tr>
-                <th>📅 Tarih</th>
-                <th>🏪 Satıcı</th>
-                <th>📌 Kategori</th>
-                <th>💳 Ödeme Tipi</th>
-                <th>💰 Tutar</th>
+                <th>Tarih</th>
+                <th>Satıcı</th>
+                <th>Kategori</th>
+                <th>Ödeme Tipi</th>
+                <th>Tutar</th>
               </tr>
             </thead>
             <tbody>

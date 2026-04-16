@@ -145,65 +145,69 @@ function App() {
 
   return (
     <BrowserRouter>
-      <div className="app-root">
-        <Navbar
-          isAuthenticated={isAuthenticated}
-          currentUser={currentUser}
-          onLogout={logout}
-        />
+      <div className={isAuthenticated ? "app-root app-shell" : "app-root auth-shell"}>
+        {isAuthenticated && (
+          <Navbar
+            isAuthenticated={isAuthenticated}
+            currentUser={currentUser}
+            onLogout={logout}
+          />
+        )}
 
-        <main className="app-main">
-          <Routes>
-            <Route
-              path="/login"
-              element={
-                isAuthenticated ? (
-                  <Navigate to="/" replace />
-                ) : (
-                  <LoginPage onAuthSuccess={setCurrentUser} />
-                )
-              }
-            />
-            <Route
-              path="/"
-              element={
-                <RequireAuth isAuthenticated={isAuthenticated}>
-                  <HomePage />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/invoices"
-              element={
-                <RequireAuth isAuthenticated={isAuthenticated}>
-                  <InvoicesPage />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/reports"
-              element={
-                <RequireAuth isAuthenticated={isAuthenticated}>
-                  <ReportsPage />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/add-income"
-              element={
-                <RequireAuth isAuthenticated={isAuthenticated}>
-                  <AddIncomePage />
-                </RequireAuth>
-              }
-            />
+        <div className={isAuthenticated ? "app-content" : "auth-content"}>
+          <main className={isAuthenticated ? "app-main" : "auth-main"}>
+            <Routes>
+              <Route
+                path="/login"
+                element={
+                  isAuthenticated ? (
+                    <Navigate to="/" replace />
+                  ) : (
+                    <LoginPage onAuthSuccess={setCurrentUser} />
+                  )
+                }
+              />
+              <Route
+                path="/"
+                element={
+                  <RequireAuth isAuthenticated={isAuthenticated}>
+                    <HomePage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/invoices"
+                element={
+                  <RequireAuth isAuthenticated={isAuthenticated}>
+                    <InvoicesPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/reports"
+                element={
+                  <RequireAuth isAuthenticated={isAuthenticated}>
+                    <ReportsPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/add-income"
+                element={
+                  <RequireAuth isAuthenticated={isAuthenticated}>
+                    <AddIncomePage />
+                  </RequireAuth>
+                }
+              />
 
-            {/* Tanımsız route gelirse anasayfaya gönder */}
-            <Route
-              path="*"
-              element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />}
-            />
-          </Routes>
-        </main>
+              {/* Tanımsız route gelirse anasayfaya gönder */}
+              <Route
+                path="*"
+                element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />}
+              />
+            </Routes>
+          </main>
+        </div>
       </div>
     </BrowserRouter>
   );

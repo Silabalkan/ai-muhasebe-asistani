@@ -3,10 +3,16 @@ import { NavLink } from "react-router-dom";
 
 export default function Navbar({ isAuthenticated, currentUser, onLogout }) {
   return (
-    <header className="app-header">
+    <header className={isAuthenticated ? "app-header app-sidebar" : "app-header app-topbar"}>
       <div className="brand">
-        <span className="app-icon">💼</span>
-        <h1>AI Muhasebe</h1>
+        <span className="app-icon" aria-hidden="true">
+          <span className="app-mark">M</span>
+          <span className="app-sign">+</span>
+        </span>
+        <div className="brand-copy">
+          <h1>AI Muhasebe</h1>
+          <p>Finans paneli</p>
+        </div>
       </div>
 
       {isAuthenticated ? (
@@ -18,7 +24,7 @@ export default function Navbar({ isAuthenticated, currentUser, onLogout }) {
               isActive ? "nav-link active" : "nav-link"
             }
           >
-            🏠 Ana Sayfa
+            Ana Sayfa
           </NavLink>
 
           <NavLink
@@ -27,7 +33,7 @@ export default function Navbar({ isAuthenticated, currentUser, onLogout }) {
               isActive ? "nav-link active" : "nav-link"
             }
           >
-            📋 Fişler
+            Fişler
           </NavLink>
 
           <NavLink
@@ -36,7 +42,7 @@ export default function Navbar({ isAuthenticated, currentUser, onLogout }) {
               isActive ? "nav-link active" : "nav-link"
             }
           >
-            📊 Raporlar
+            Raporlar
           </NavLink>
 
           <NavLink
@@ -45,10 +51,10 @@ export default function Navbar({ isAuthenticated, currentUser, onLogout }) {
               isActive ? "nav-link active" : "nav-link"
             }
           >
-            ➕ Gelir Ekle
+            Gelir Ekle
           </NavLink>
 
-          <span className="user-badge">👤 {currentUser?.username}</span>
+          <span className="user-badge">{currentUser?.username}</span>
           <button type="button" className="logout-btn" onClick={onLogout}>
             Çıkış
           </button>
@@ -61,7 +67,7 @@ export default function Navbar({ isAuthenticated, currentUser, onLogout }) {
               isActive ? "nav-link active" : "nav-link"
             }
           >
-            🔐 Giriş
+            Giriş
           </NavLink>
         </nav>
       )}

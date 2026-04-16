@@ -47,7 +47,7 @@ export default function AddIncomePage() {
   // MANUEL GELİR HANDLER
   const handleManualSubmit = async () => {
     if (!amount || !date) {
-      alert("⚠️ Tutar ve tarih zorunludur");
+      alert("Tutar ve tarih zorunludur");
       return;
     }
 
@@ -69,7 +69,7 @@ export default function AddIncomePage() {
       setDescription("");
     } catch (err) {
       console.error(err);
-      alert("❌ Gelir eklenirken hata oluştu");
+      alert("Gelir eklenirken hata oluştu");
     } finally {
       setManualLoading(false);
     }
@@ -79,7 +79,7 @@ export default function AddIncomePage() {
     <>
       {/* BİLGİLENDİRME */}
       <section className="card info-card">
-        <h3>ℹ️ Gelirinizi Kaydedin</h3>
+        <h3>Gelirinizi Kaydedin</h3>
         <p className="info-text">
           Tüm gelir kaynaklarınızı takip etmek önemlidir. Fiş veya fatura yükleyerek veya manuel olarak gelir ekleyerek 
           işletmenizin finansal durumunu güncel tutabilirsiniz. Gelir ve gider dengesini rapor sayfasından takip edebilirsiniz.
@@ -93,13 +93,13 @@ export default function AddIncomePage() {
             className={`tab-btn ${activeTab === "upload" ? "active" : ""}`}
             onClick={() => setActiveTab("upload")}
           >
-            📸 Fiş Yükle
+            Fiş Yükle
           </button>
           <button
             className={`tab-btn ${activeTab === "manual" ? "active" : ""}`}
             onClick={() => setActiveTab("manual")}
           >
-            ✍️ Manuel Ekle
+            Manuel Ekle
           </button>
         </div>
       </section>
@@ -107,13 +107,13 @@ export default function AddIncomePage() {
       {/* FİŞ YÜKLEME TAB */}
       {activeTab === "upload" && (
         <section className="card upload-card">
-          <h2>📸 Fiş Yükleyerek Gelir Ekle</h2>
+          <h2>Fiş Yükleyerek Gelir Ekle</h2>
           <p className="upload-desc">
             Fiş veya fatura görselini yükleyin. AI sistem otomatik olarak gelir bilgilerini çıkarsın ve kaydetsın.
           </p>
 
           {uploadSuccess && (
-            <p className="success-text">✅ Gelir başarıyla kaydedildi!</p>
+            <p className="success-text">Gelir başarıyla kaydedildi.</p>
           )}
 
           <div className="upload-row">
@@ -132,7 +132,7 @@ export default function AddIncomePage() {
               }}
             />
             <button onClick={handleUpload} disabled={uploadLoading}>
-              {uploadLoading ? "⏳ Analiz ediliyor..." : "🚀 Analiz Et"}
+              {uploadLoading ? "Analiz ediliyor..." : "Analiz Et"}
             </button>
           </div>
 
@@ -145,7 +145,7 @@ export default function AddIncomePage() {
           {/* ANALİZ SONUÇLARI */}
           {uploadResult && (
             <section className="result-card">
-              <h3>✨ Analiz Sonuçları</h3>
+              <h3>Analiz Sonuçları</h3>
 
               <div className="result-layout">
                 {/* SOL: FİŞ GÖRSELİ */}
@@ -162,41 +162,41 @@ export default function AddIncomePage() {
                 {/* SAĞ: ANALİZ BİLGİLERİ */}
                 <div className="result-grid">
                   <div className="result-row">
-                    <span className="label">💰 Tutar:</span>
+                    <span className="label">Tutar</span>
                     <span className="value highlight">{uploadResult.total_amount} ₺</span>
                   </div>
 
                   <div className="result-row">
-                    <span className="label">📅 Tarih:</span>
+                    <span className="label">Tarih</span>
                     <span className="value">{uploadResult.invoice_date || "-"}</span>
                   </div>
 
                   <div className="result-row">
-                    <span className="label">🧾 Satıcı:</span>
+                    <span className="label">Satıcı</span>
                     <span className="value">{uploadResult.vendor || "-"}</span>
                   </div>
 
                   <div className="result-row">
-                    <span className="label">💳 Ödeme Tipi:</span>
+                    <span className="label">Ödeme Tipi</span>
                     <span className="value">{uploadResult.payment_type || "-"}</span>
                   </div>
 
                   <div className="result-row">
-                    <span className="label">📊 KDV Oranı:</span>
+                    <span className="label">KDV Oranı</span>
                     <span className="value">
                       {uploadResult.kdv_rate != null ? `%${uploadResult.kdv_rate}` : "-"}
                     </span>
                   </div>
 
                   <div className="result-row">
-                    <span className="label">📈 KDV Tutarı:</span>
+                    <span className="label">KDV Tutarı</span>
                     <span className="value">
                       {uploadResult.kdv_amount != null ? `${uploadResult.kdv_amount} ₺` : "-"}
                     </span>
                   </div>
 
                   <div className="result-row">
-                    <span className="label">⏱️ Kayıt Zamanı:</span>
+                    <span className="label">Kayıt Zamanı</span>
                     <span className="value small">
                       {new Date(uploadResult.created_at).toLocaleString("tr-TR")}
                     </span>
@@ -211,14 +211,14 @@ export default function AddIncomePage() {
       {/* MANUEL GELİR EKLE TAB */}
       {activeTab === "manual" && (
         <section className="card">
-          <h2>✍️ Manuel Gelir Ekle</h2>
+          <h2>Manuel Gelir Ekle</h2>
 
           {manualSuccess && (
-            <p className="success-text">✅ Gelir başarıyla kaydedildi!</p>
+            <p className="success-text">Gelir başarıyla kaydedildi.</p>
           )}
 
           <div className="form-group">
-            <label>💰 Tutar (₺)</label>
+            <label>Tutar (₺)</label>
             <input
               type="number"
               value={amount}
@@ -230,7 +230,7 @@ export default function AddIncomePage() {
           </div>
 
           <div className="form-group">
-            <label>📅 Tarih</label>
+            <label>Tarih</label>
             <input
               type="date"
               value={date}
@@ -239,7 +239,7 @@ export default function AddIncomePage() {
           </div>
 
           <div className="form-group">
-            <label>📝 Açıklama</label>
+            <label>Açıklama</label>
             <input
               type="text"
               value={description}
@@ -249,7 +249,7 @@ export default function AddIncomePage() {
           </div>
 
           <button onClick={handleManualSubmit} disabled={manualLoading}>
-            {manualLoading ? "⏳ Kaydediliyor..." : "💾 Gelir Ekle"}
+            {manualLoading ? "Kaydediliyor..." : "Gelir Ekle"}
           </button>
         </section>
       )}

@@ -278,37 +278,37 @@ export default function ReportsPage() {
     <>
       {/* BAŞLIK */}
       <section className="card">
-        <h2>📊 Finansal Raporlar</h2>
+        <h2>Finansal Raporlar</h2>
 
         {/* FİLTRE */}
         <div className="filter-row">
-          <label>🗓️ Dönem Seçin:</label>
+          <label>Dönem Seçin</label>
           <select
             value={period}
             onChange={(e) => {
               setPeriod(e.target.value);
             }}
           >
-            <option value="weekly">📅 Bu Hafta</option>
-            <option value="monthly">📅 Bu Ay</option>
-            <option value="yearly">📅 Bu Yıl</option>
-            <option value="custom">📆 Özel Tarih Aralığı</option>
+            <option value="weekly">Bu Hafta</option>
+            <option value="monthly">Bu Ay</option>
+            <option value="yearly">Bu Yıl</option>
+            <option value="custom">Özel Tarih Aralığı</option>
           </select>
 
-          <label>🧠 Tahmin Modeli:</label>
+          <label>Tahmin Modeli</label>
           <select
             value={forecastModel}
             onChange={(e) => {
               setForecastModel(e.target.value);
             }}
           >
-            <option value="auto">⚙️ Otomatik</option>
-            <option value="prophet">🔮 Prophet</option>
-            <option value="arima">📉 ARIMA</option>
-            <option value="linear">📏 Lineer</option>
+            <option value="auto">Otomatik</option>
+            <option value="prophet">Prophet</option>
+            <option value="arima">ARIMA</option>
+            <option value="linear">Lineer</option>
           </select>
 
-          <label>🚨 Anomali Esigi:</label>
+          <label>Anomali Eşiği</label>
           <select
             value={anomalyThreshold}
             onChange={(e) => setAnomalyThreshold(Number(e.target.value))}
@@ -318,7 +318,7 @@ export default function ReportsPage() {
             <option value={1.4}>%40 Ustu</option>
           </select>
 
-          <label>🧪 Anomali Yontemi:</label>
+          <label>Anomali Yöntemi</label>
           <select
             value={anomalyMethod}
             onChange={(e) => setAnomalyMethod(e.target.value)}
@@ -360,7 +360,7 @@ export default function ReportsPage() {
                 disabled={!customDateRange.startDate || !customDateRange.endDate}
                 className="btn-apply"
               >
-                ✓ Uygula
+                Uygula
               </button>
             </div>
           )}
@@ -369,18 +369,18 @@ export default function ReportsPage() {
 
       {loading ? (
         <section className="card">
-          <p className="empty-text">⏳ Raporlar yükleniyor...</p>
+          <p className="empty-text">Raporlar yükleniyor...</p>
         </section>
       ) : (
         <>
           {/* KPI KARTLARI */}
           {advancedData && (
             <section className="card">
-              <h3>📈 Anahtar Metrikler (KPI)</h3>
+              <h3>Anahtar Metrikler (KPI)</h3>
               <div className="kpi-grid">
                 {/* Toplam Gelir */}
                 <div className="kpi-card">
-                  <div className="kpi-icon">💰</div>
+                  <div className="kpi-icon" aria-hidden="true"></div>
                   <div className="kpi-content">
                     <h4>Toplam Gelir</h4>
                     <p className="kpi-value income">
@@ -396,7 +396,7 @@ export default function ReportsPage() {
 
                 {/* Toplam Gider */}
                 <div className="kpi-card">
-                  <div className="kpi-icon">💸</div>
+                  <div className="kpi-icon" aria-hidden="true"></div>
                   <div className="kpi-content">
                     <h4>Toplam Gider</h4>
                     <p className="kpi-value expense">
@@ -412,7 +412,7 @@ export default function ReportsPage() {
 
                 {/* Net Kar/Zarar */}
                 <div className="kpi-card">
-                  <div className="kpi-icon">📊</div>
+                  <div className="kpi-icon" aria-hidden="true"></div>
                   <div className="kpi-content">
                     <h4>Net Kar/Zarar</h4>
                     <p
@@ -432,7 +432,7 @@ export default function ReportsPage() {
 
                 {/* Ortalama Gelir */}
                 <div className="kpi-card">
-                  <div className="kpi-icon">📌</div>
+                  <div className="kpi-icon" aria-hidden="true"></div>
                   <div className="kpi-content">
                     <h4>Ort. Gelir</h4>
                     <p className="kpi-value income">
@@ -450,7 +450,7 @@ export default function ReportsPage() {
 
                 {/* Ortalama Gider */}
                 <div className="kpi-card">
-                  <div className="kpi-icon">📍</div>
+                  <div className="kpi-icon" aria-hidden="true"></div>
                   <div className="kpi-content">
                     <h4>Ort. Gider</h4>
                     <p className="kpi-value expense">
@@ -468,7 +468,7 @@ export default function ReportsPage() {
 
                 {/* Toplam KDV */}
                 <div className="kpi-card">
-                  <div className="kpi-icon">📋</div>
+                  <div className="kpi-icon" aria-hidden="true"></div>
                   <div className="kpi-content">
                     <h4>Toplam KDV</h4>
                     <p className="kpi-value">
@@ -491,7 +491,7 @@ export default function ReportsPage() {
                   : ""
               }`}
             >
-              <h3>🚨 Gider Anomali Kontrolu</h3>
+              <h3>Gider Anomali Kontrolü</h3>
               <p className="upload-desc" style={{ marginTop: 6 }}>
                 Son ay gideri, secilen pencere icindeki gecmis gider seviyesine gore degerlendirildi.
               </p>
@@ -499,17 +499,17 @@ export default function ReportsPage() {
               {anomalyData.anomaly?.status === "insufficient_data" ||
               anomalyData.anomaly?.status === "insufficient_baseline" ? (
                 <div className="alert alert-info">
-                  <span className="alert-icon">ℹ️</span>
+                  <span className="alert-icon">BİLGİ</span>
                   <span>{anomalyData.anomaly.message}</span>
                 </div>
               ) : anomalyData.anomaly?.is_anomaly ? (
                 <div className="alert alert-danger">
-                  <span className="alert-icon">⚠️</span>
+                  <span className="alert-icon">UYARI</span>
                   <span>{anomalyData.anomaly.message}</span>
                 </div>
               ) : (
                 <div className="alert alert-success">
-                  <span className="alert-icon">✅</span>
+                  <span className="alert-icon">ONAY</span>
                   <span>{anomalyData.anomaly?.message}</span>
                 </div>
               )}
@@ -517,7 +517,7 @@ export default function ReportsPage() {
               {anomalyData.anomaly?.status === "ok" && (
                 <div className="kpi-grid" style={{ marginTop: 12 }}>
                   <div className="kpi-card">
-                    <div className="kpi-icon">📌</div>
+                    <div className="kpi-icon" aria-hidden="true"></div>
                     <div className="kpi-content">
                       <h4>Referans Seviye</h4>
                       <p className="kpi-value">
@@ -531,7 +531,7 @@ export default function ReportsPage() {
                   </div>
 
                   <div className="kpi-card">
-                    <div className="kpi-icon">🧾</div>
+                    <div className="kpi-icon" aria-hidden="true"></div>
                     <div className="kpi-content">
                       <h4>Son Ay Gideri</h4>
                       <p className="kpi-value expense">
@@ -543,7 +543,7 @@ export default function ReportsPage() {
                   </div>
 
                   <div className="kpi-card">
-                    <div className="kpi-icon">🎯</div>
+                    <div className="kpi-icon" aria-hidden="true"></div>
                     <div className="kpi-content">
                       <h4>Anomali Esigi</h4>
                       <p className="kpi-value">
@@ -645,7 +645,7 @@ export default function ReportsPage() {
             {/* PASTA GRAFİK */}
             {advancedData && (
               <section className="card">
-                <h3>💹 Gelir vs Gider Oranı</h3>
+                <h3>Gelir vs Gider Oranı</h3>
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
@@ -680,7 +680,7 @@ export default function ReportsPage() {
             {/* TREND GRAFIK */}
             {trendData && trendData.length > 0 && (
               <section className="card">
-                <h3>📈 Aylık Trend (Son 6 Ay)</h3>
+                <h3>Aylık Trend (Son 6 Ay)</h3>
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={trendData}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -728,7 +728,7 @@ export default function ReportsPage() {
             {forecastData && forecastChartData.length > 0 && (
               <>
                 <section className="card">
-                  <h3>📈 Geçmiş Trend</h3>
+                  <h3>Geçmiş Trend</h3>
                   <ResponsiveContainer width="100%" height={400}>
                       <LineChart data={historyOnlyChartData}>
                         <CartesianGrid strokeDasharray="3 3" />
@@ -852,10 +852,10 @@ export default function ReportsPage() {
           {/* GELECEK AY ÖZETİ */}
           {nextMonthForecast && (
             <section className="card">
-              <h3>🗓️ Gelecek Ay Tahmini</h3>
+              <h3>Gelecek Ay Tahmini</h3>
               <div className="forecast-next-grid">
                 <div className="summary-item income-item">
-                  <div className="summary-icon">💰</div>
+                  <div className="summary-icon" aria-hidden="true"></div>
                   <div className="summary-text">
                     <span className="summary-label">Tahmini Gelir</span>
                     <span className="summary-amount">
@@ -867,7 +867,7 @@ export default function ReportsPage() {
                 </div>
 
                 <div className="summary-item expense-item">
-                  <div className="summary-icon">💸</div>
+                  <div className="summary-icon" aria-hidden="true"></div>
                   <div className="summary-text">
                     <span className="summary-label">Tahmini Gider</span>
                     <span className="summary-amount">
@@ -879,7 +879,7 @@ export default function ReportsPage() {
                 </div>
 
                 <div className="summary-item net-item">
-                  <div className="summary-icon">📊</div>
+                  <div className="summary-icon" aria-hidden="true"></div>
                   <div className="summary-text">
                     <span className="summary-label">Tahmini Net</span>
                     <span
@@ -899,10 +899,10 @@ export default function ReportsPage() {
 
           {forecastQuality && (
             <section className="card">
-              <h3>🧪 Tahmin Kalite Ozeti</h3>
+              <h3>Tahmin Kalite Özeti</h3>
               <div className="forecast-quality-grid">
                 <div className="kpi-card">
-                  <div className="kpi-icon">🎯</div>
+                  <div className="kpi-icon" aria-hidden="true"></div>
                   <div className="kpi-content">
                     <h4>Guven Seviyesi</h4>
                     <p className="kpi-value">
@@ -915,7 +915,7 @@ export default function ReportsPage() {
                 </div>
 
                 <div className="kpi-card">
-                  <div className="kpi-icon">📉</div>
+                  <div className="kpi-icon" aria-hidden="true"></div>
                   <div className="kpi-content">
                     <h4>Gelir WAPE</h4>
                     <p className="kpi-value">
@@ -932,7 +932,7 @@ export default function ReportsPage() {
                 </div>
 
                 <div className="kpi-card">
-                  <div className="kpi-icon">📈</div>
+                  <div className="kpi-icon" aria-hidden="true"></div>
                   <div className="kpi-content">
                     <h4>Gider WAPE</h4>
                     <p className="kpi-value">
@@ -954,7 +954,7 @@ export default function ReportsPage() {
           {/* KATEGORİ DAĞILIM */}
           {categoryData && categoryData.length > 0 && (
             <section className="card">
-              <h3>🏪 En Çok Harcama Yapılan Satıcılar/Kategoriler</h3>
+              <h3>En Çok Harcama Yapılan Satıcılar/Kategoriler</h3>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={categoryData}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -986,7 +986,7 @@ export default function ReportsPage() {
           {/* ÖDEME TİPİ DAĞILIM */}
           {advancedData && advancedData.payment_distribution.length > 0 && (
             <section className="card">
-              <h3>💳 Ödeme Tipi Dağılımı</h3>
+              <h3>Ödeme Tipi Dağılımı</h3>
               <div className="payment-distribution">
                 {advancedData.payment_distribution.map((payment, idx) => (
                   <div key={idx} className="payment-item">
@@ -1024,11 +1024,11 @@ export default function ReportsPage() {
           {/* UYARILAR & ÖNERİLER */}
           {advancedData && (
             <section className="card warning-card">
-              <h3>⚠️ Analiz & Öneriler</h3>
+              <h3>Analiz & Öneriler</h3>
               <div className="alerts">
                 {advancedData.profitability_rate < 0 ? (
                   <div className="alert alert-danger">
-                    <span className="alert-icon">❌</span>
+                    <span className="alert-icon">HATA</span>
                     <span>
                       Dikkat! Gideriniz gelirden fazla. Kar marjı{" "}
                       <strong>
@@ -1038,7 +1038,7 @@ export default function ReportsPage() {
                   </div>
                 ) : advancedData.profitability_rate < 20 ? (
                   <div className="alert alert-warning">
-                    <span className="alert-icon">⚠️</span>
+                    <span className="alert-icon">UYARI</span>
                     <span>
                       Kardılık oranınız{" "}
                       <strong>{advancedData.profitability_rate.toFixed(1)}%</strong> -
@@ -1047,7 +1047,7 @@ export default function ReportsPage() {
                   </div>
                 ) : (
                   <div className="alert alert-success">
-                    <span className="alert-icon">✅</span>
+                    <span className="alert-icon">ONAY</span>
                     <span>
                       Kardılık oranınız{" "}
                       <strong>{advancedData.profitability_rate.toFixed(1)}%</strong> -
@@ -1058,7 +1058,7 @@ export default function ReportsPage() {
 
                 {advancedData.income_count === 0 && (
                   <div className="alert alert-info">
-                    <span className="alert-icon">ℹ️</span>
+                    <span className="alert-icon">BİLGİ</span>
                     <span>
                       Bu dönemde henüz gelir kaydı yok. Gelir Ekle sayfasından
                       başlayın.
@@ -1068,7 +1068,7 @@ export default function ReportsPage() {
 
                 {advancedData.expense_count === 0 && (
                   <div className="alert alert-info">
-                    <span className="alert-icon">ℹ️</span>
+                    <span className="alert-icon">BİLGİ</span>
                     <span>
                       Bu dönemde henüz gider kaydı yok. Ana sayfadan fiş
                       yüklemeye başlayın.
@@ -1078,7 +1078,7 @@ export default function ReportsPage() {
 
                 {advancedData.total_kdv > 0 && (
                   <div className="alert alert-info">
-                    <span className="alert-icon">📋</span>
+                    <span className="alert-icon">KDV</span>
                     <span>
                       Bu dönem toplam KDV tutarınız:{" "}
                       <strong>
