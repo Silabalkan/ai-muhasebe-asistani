@@ -117,6 +117,10 @@ export const getExpenseAnomaly = (params) => {
   return API.get("/reports/anomaly-expense", { params });
 };
 
+export const getFinancialInsight = (params) => {
+  return API.get("/reports/ai-insight", { params });
+};
+
 export const addManualIncome = (payload) => {
   return API.post("/invoices/manual-income", payload);
 };

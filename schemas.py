@@ -130,3 +130,40 @@ class ForecastResponse(BaseModel):
     quality: ForecastQuality
     history: list[MonthlyAggregatePoint]
     forecast: list[ForecastPoint]
+
+
+class FinancialInsightResponse(BaseModel):
+    period: str
+    start_date: date
+    end_date: date
+    total_income: float
+    total_expense: float
+    net: float
+    forecast_next_expense: float | None = None
+    insight_text: str
+    insight_source: str
+    model_used: str | None = None
+
+
+class AICommentRequest(BaseModel):
+    summary: str
+
+    @field_validator("summary")
+    @classmethod
+    def validate_summary(cls, v):
+        value = (v or "").strip()
+        if len(value) < 10:
+            raise ValueError("summary en az 10 karakter olmali")
+        return value
+
+
+class AICommentResponse(BaseModel):
+    comment: str
+    provider: str
+
+
+class AIStatusResponse(BaseModel):
+    provider: str
+    configured_model: str
+    healthy: bool
+    detail: str

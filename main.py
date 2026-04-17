@@ -36,9 +36,15 @@ from schemas import (
     UserRead,
     MonthlyAggregateResponse,
     ForecastResponse,
+    FinancialInsightResponse,
+    AICommentRequest,
+    AICommentResponse,
+    AIStatusResponse,
 )
 from nlp_utils import analyze_invoice_text
 from auth import get_current_user, create_access_token
+from config import get_settings
+from ai_service import generate_financial_comment, get_ai_runtime_status
 
 # =========================
 # TESSERACT (WINDOWS)
@@ -965,6 +971,135 @@ def summary_report(
         "total_expense": float(expense),
         "net": float(income - expense),
     }
+
+
+@app.get("/reports/ai-insight", response_model=FinancialInsightResponse)
+def ai_financial_insight(
+    period: str = "monthly",
+    start_date: date | None = None,
+    end_date: date | None = None,
+    forecast_model: str = "auto",
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Generate a natural-language financial commentary from user metrics."""
+    start_date, end_date = resolve_period_dates(period, start_date, end_date)
+
+    total_income = (
+        db.query(func.sum(models.Invoice.total_amount))
+        .filter(
+            models.Invoice.user_id == current_user.id,
+            models.Invoice.category == "Gelir",
+            models.Invoice.invoice_date >= start_date,
+            models.Invoice.invoice_date <= end_date,
+        )
+        .scalar()
+        or 0
+    )
+    total_expense = (
+        db.query(func.sum(models.Invoice.total_amount))
+        .filter(
+            models.Invoice.user_id == current_user.id,
+            models.Invoice.category == "Gider",
+            models.Invoice.invoice_date >= start_date,
+            models.Invoice.invoice_date <= end_date,
+        )
+        .scalar()
+        or 0
+    )
+
+    forecast_model = (forecast_model or "auto").strip().lower()
+    allowed_models = {"auto", "prophet", "arima", "linear"}
+    if forecast_model not in allowed_models:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="forecast_model auto, prophet, arima veya linear olmalı",
+        )
+
+    start_month = month_start(start_date)
+    end_month = month_start(end_date)
+    history_points = build_monthly_aggregate_points_for_window(
+        db=db,
+        user_id=current_user.id,
+        start_month=start_month,
+        end_month=end_month,
+    )
+
+    month_keys = [p["month"] for p in history_points]
+    expense_values = [float(p["expense"]) for p in history_points]
+    forecast_next_expense = None
+
+    if month_keys and expense_values:
+        if forecast_model == "auto":
+            model_order = ["prophet", "arima", "linear"]
+        elif forecast_model == "prophet":
+            model_order = ["prophet", "arima", "linear"]
+        elif forecast_model == "arima":
+            model_order = ["arima", "prophet", "linear"]
+        else:
+            model_order = ["linear"]
+
+        for candidate in model_order:
+            result = forecast_series_with_model(
+                month_keys=month_keys,
+                values=expense_values,
+                forecast_months=1,
+                model_name=candidate,
+            )
+            if result and len(result) == 1:
+                forecast_next_expense = float(result[0]["value"])
+                break
+
+    net = float(total_income - total_expense)
+    summary = (
+        f"Donem: {period}\n"
+        f"Baslangic: {start_date.isoformat()}\n"
+        f"Bitis: {end_date.isoformat()}\n"
+        f"Toplam gelir: {float(total_income):.2f} TL\n"
+        f"Toplam gider: {float(total_expense):.2f} TL\n"
+        f"Net sonuc: {net:.2f} TL\n"
+        f"Tahmini bir sonraki ay gider: "
+        f"{(f'{forecast_next_expense:.2f} TL' if forecast_next_expense is not None else 'Veri yetersiz')}"
+    )
+    comment = generate_financial_comment(summary)
+    provider = get_settings().ai_provider
+
+    return {
+        "period": period,
+        "start_date": start_date,
+        "end_date": end_date,
+        "total_income": float(total_income),
+        "total_expense": float(total_expense),
+        "net": net,
+        "forecast_next_expense": forecast_next_expense,
+        "insight_text": comment,
+        "insight_source": get_settings().ai_provider,
+        "model_used": provider,
+    }
+
+
+@app.post("/ai-comment", response_model=AICommentResponse)
+def ai_comment(
+    payload: AICommentRequest,
+    current_user: models.User = Depends(get_current_user),
+):
+    """Generic AI commentary endpoint. Provider/key are backend-only."""
+    _ = current_user.id
+    comment = generate_financial_comment(payload.summary)
+    return {
+        "comment": comment,
+        "provider": get_settings().ai_provider,
+    }
+
+
+@app.get("/ai/status", response_model=AIStatusResponse)
+def ai_status(
+    current_user: models.User = Depends(get_current_user),
+):
+    """Return active AI provider/model health without exposing secrets."""
+    _ = current_user.id
+    status_info = get_ai_runtime_status()
+    return status_info
 
 # =========================
 # GELİŞMİŞ RAPOR (KPI & ANALİZ)

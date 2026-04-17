@@ -23,6 +23,7 @@ import {
   getCategoryDistribution,
   getForecastReport,
   getExpenseAnomaly,
+  getFinancialInsight,
 } from "../api";
 
 export default function ReportsPage() {
@@ -40,7 +41,33 @@ export default function ReportsPage() {
   const [categoryData, setCategoryData] = useState(null);
   const [forecastData, setForecastData] = useState(null);
   const [anomalyData, setAnomalyData] = useState(null);
+  const [insightData, setInsightData] = useState(null);
+  const [insightLoading, setInsightLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const cleanInsightText = (text) =>
+    (text || "")
+      .replace(/\*\*/g, "")
+      .replace(/\*/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const loadInsight = useCallback(async (insightParams) => {
+    try {
+      setInsightLoading(true);
+      const insight = await getFinancialInsight(insightParams);
+      setInsightData(insight.data);
+    } catch (err) {
+      console.error(err);
+      setInsightData({
+        insight_text: "AI yorum su anda yuklenemedi. Rapor verileri gosteriliyor.",
+        insight_source: "ui-fallback",
+        model_used: null,
+      });
+    } finally {
+      setInsightLoading(false);
+    }
+  }, []);
 
   const loadAllReports = useCallback(async () => {
     try {
@@ -110,6 +137,11 @@ export default function ReportsPage() {
         baseline_method: anomalyMethod,
       };
 
+      const insightParams = {
+        ...advancedParams,
+        forecast_model: forecastModel,
+      };
+
       const [advanced, trend, category, forecast, anomaly] = await Promise.all([
         getAdvancedReport(advancedParams),
         getTrendReport(trendParams),
@@ -123,6 +155,7 @@ export default function ReportsPage() {
       setCategoryData(category.data.categories);
       setForecastData(forecast.data);
       setAnomalyData(anomaly.data);
+      void loadInsight(insightParams);
     } catch (err) {
       console.error(err);
       const detail = err?.response?.data?.detail;
@@ -137,6 +170,7 @@ export default function ReportsPage() {
     forecastModel,
     anomalyThreshold,
     anomalyMethod,
+    loadInsight,
   ]);
 
   useEffect(() => {
@@ -373,6 +407,30 @@ export default function ReportsPage() {
         </section>
       ) : (
         <>
+          {insightData && (
+            <section className="card">
+              <h3>AI Finansal Yorum</h3>
+              <p className="upload-desc" style={{ marginTop: 6 }}>
+                {insightLoading && !insightData.insight_text
+                  ? "AI yorumu hazirlaniyor..."
+                  : cleanInsightText(insightData.insight_text)}
+              </p>
+              <p className="kpi-label" style={{ marginTop: 8 }}>
+                Kaynak: {insightData.insight_source === "ui-fallback" ? "Yerel yedek" : insightData.insight_source}
+                {insightData.model_used ? ` | Model: ${insightData.model_used}` : ""}
+              </p>
+            </section>
+          )}
+
+          {insightLoading && !insightData && (
+            <section className="card">
+              <h3>AI Finansal Yorum</h3>
+              <p className="upload-desc" style={{ marginTop: 6 }}>
+                AI yorumu hazirlaniyor...
+              </p>
+            </section>
+          )}
+
           {/* KPI KARTLARI */}
           {advancedData && (
             <section className="card">
